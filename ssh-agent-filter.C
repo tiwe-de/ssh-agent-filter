@@ -145,7 +145,7 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 	po::options_description opts("OPTIONS");
 	opts.add_options()
 		("comment,c",		po::value(&allowed_comment),	"key specified by comment")
-		("debug,d",		po::bool_switch(&debug),	"show even more stuff")
+		("debug,d",		po::bool_switch(&debug),	"show some debug info, don't fork")
 		("fingerprint,fp,f",	po::value(&allowed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint")
 		("help,h",		"print this help message")
 		("key,k",		po::value(&allowed_b64),	"key specified by base64-encoded pubkey")
