@@ -350,7 +350,7 @@ int main (int const argc, char const * const * const argv) {
 			exit(EX_OSERR);
 		}
 		if (pid > 0) {
-			std::cout << "SSH_AUTH_SOCK='" << path << "'; export SSH_AUTH_SOCK;" << std::endl;
+			std::cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << std::endl;
 			std::cout << "SSH_AGENT_PID='" << pid << "'; export SSH_AGENT_PID;" << std::endl;
 			std::cout << "echo 'Agent pid " << pid << "';" << std::endl;
 			exit(EX_OK);
