@@ -156,7 +156,7 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 	po::notify(config);
 	
 	if (config.count("help")) {
-		std::cout << "Invocation: ssh-agent-filter [ OPTIONS ] -- [ SSH ARGUMENTS ]" << std::endl;
+		std::cout << "Invocation: ssh-agent-filter [ OPTIONS ]" << std::endl;
 		std::cout << opts << std::endl;
 		exit(EX_OK);
 	}

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# afssh -- wrapper around ssh-agent-filter and ssh
+#
 # Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
 #
 # This file is part of ssh-agent-filter.
@@ -22,8 +24,21 @@ set -e
 
 declare -a agent_filter_args
 
+if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
+	SAF=$(readlink -f "${BASH_SOURCE%/*}/ssh-agent-filter")
+else
+	SAF=$(which ssh-agent-filter)
+fi
+
 while true; do
-	if [ "$1" = "--" ]; then
+	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+		echo "usage: afssh [ssh-agent-filter options] -- [ssh options]"
+		echo
+		"$SAF" --help
+		echo
+		ssh --help
+		exit
+	elif [ "$1" = "--" ]; then
 		shift
 		break
 	else
@@ -37,12 +52,6 @@ unset SSH_AGENT_PID
 
 trap 'kill "$SSH_AGENT_PID"; rm -r "$TEMPDIR"' EXIT
 TEMPDIR=$(mktemp -d)
-
-if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
-	SAF=$(readlink -f "${BASH_SOURCE%/*}/ssh-agent-filter")
-else
-	SAF=$(which ssh-agent-filter)
-fi
 
 eval $(cd "$TEMPDIR"; "$SAF" "${agent_filter_args[@]}" || echo exit $?)
 
