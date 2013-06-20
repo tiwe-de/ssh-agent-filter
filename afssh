@@ -23,12 +23,25 @@
 set -e
 
 usage () {
-	echo "usage: afssh [ssh-agent-filter options] -- [ssh options]"
+	echo "normal usage: afssh [ssh-agent-filter options] -- [ssh arguments]"
+	echo "interactive:  afssh -- [ssh arguments]"
 	echo
 	"$SAF" --help
 	echo
 	ssh --help
 	exit
+}
+
+interactive_selection () {
+	ssh-add -l | {
+		declare -a arr
+		while read size hash comment; do
+			arr+=("$hash" "$comment" "off")
+		done
+		"$DIALOG" --separate-output --title "afssh: key selection" --checklist "Which keys do you want to be forwarded?" 0 0 0 "${arr[@]}" 3>&1 1>&2 2>&3 3>&- | while read hash; do
+			printf '%s\n%s\n' "-f" "$hash"
+		done
+	}
 }
 
 if ! ssh-add -l > /dev/null; then
@@ -44,17 +57,28 @@ else
 	SAF=$(which ssh-agent-filter)
 fi
 
-while true; do
-	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-		usage
-	elif [ "$1" = "--" ]; then
-		shift
-		break
-	else
-		agent_filter_args+=("$1")
-		shift
+if [ $# -le 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+	usage
+elif [ "$1" = "--" ]; then
+	shift
+	if ! DIALOG=$(which whiptail) && ! DIALOG=$(which dialog); then
+		echo "neither whiptail nor dialog found in \$PATH, interactive mode doesn't work without one of them" >&2
+		exit 1
 	fi
-done
+	agent_filter_args=( $(interactive_selection) )
+else
+	while true; do
+		if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+			usage
+		elif [ "$1" = "--" ]; then
+			shift
+			break
+		else
+			agent_filter_args+=("$1")
+			shift
+		fi
+	done
+fi
 
 # safeguard to not kill the real ssh-agent
 unset SSH_AGENT_PID
