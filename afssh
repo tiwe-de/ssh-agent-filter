@@ -22,6 +22,15 @@
 
 set -e
 
+usage () {
+	echo "usage: afssh [ssh-agent-filter options] -- [ssh options]"
+	echo
+	"$SAF" --help
+	echo
+	ssh --help
+	exit
+}
+
 declare -a agent_filter_args
 
 if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
@@ -32,12 +41,7 @@ fi
 
 while true; do
 	if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-		echo "usage: afssh [ssh-agent-filter options] -- [ssh options]"
-		echo
-		"$SAF" --help
-		echo
-		ssh --help
-		exit
+		usage
 	elif [ "$1" = "--" ]; then
 		shift
 		break
