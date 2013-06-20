@@ -86,8 +86,11 @@ unset SSH_AGENT_PID
 trap 'kill "$SSH_AGENT_PID"; rm -r "$TEMPDIR"' EXIT
 TEMPDIR=$(mktemp -d)
 
-eval $(cd "$TEMPDIR"; "$SAF" "${agent_filter_args[@]}" || echo exit $?)
-
-ssh-add -l
+if [ -t 1 ]; then
+	eval $(cd "$TEMPDIR"; "$SAF" "${agent_filter_args[@]}" || echo exit $?)
+	ssh-add -l
+else
+	eval $(cd "$TEMPDIR"; "$SAF" "${agent_filter_args[@]}" || echo exit $?) > /dev/null
+fi
 
 ssh -A "$@"
