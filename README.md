@@ -17,10 +17,15 @@ our solution
 3. use ssh-agent-filter to allow only the key(s) you need
 
 afssh (agent filtered ssh) can wrap ssh-agent-filter and ssh for you:
+
     $ afssh -c id_example -- example.com
+
 starts an `ssh-agent-filter -c id_example`, runs `ssh -A example.com` and kills the ssh-agent-filter afterwards.
+
 If you leave out the options before the `--`:
+
     $ afssh -- example.com
+
 it will ask you via whiptail or dialog which keys you want to have forwarded.
 
 
@@ -31,17 +36,17 @@ ssh-agent-filter provides a socket interface identical to that of a normal ssh-a
 We don't keep private key material, but delegate requests to the upstream ssh-agent after checking if the key is allowed.
 
 The following requests are implemented:
-* SSH2_AGENTC_REQUEST_IDENTITIES:
+* `SSH2_AGENTC_REQUEST_IDENTITIES`:
   * asks for a list of SSH 2 keys
   * the upstream ssh-agent is asked for that list and the result is filtered
-* SSH2_AGENTC_SIGN_REQUEST:
+* `SSH2_AGENTC_SIGN_REQUEST`:
   * asks for a signature on some data to be made with a key
   * if the key is allowed the request is forwarded to the upstream ssh-agent and the result returned
   * else failure is returned
-* SSH_AGENTC_REQUEST_RSA_IDENTITIES:
+* `SSH_AGENTC_REQUEST_RSA_IDENTITIES`:
   * asks for a list of SSH 1 keys
   * an empty list is returned
-* SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES:
+* `SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES`:
   * asks for removal of all SSH 1 keys
   * success is returned without doing anything
 
