@@ -5,7 +5,7 @@
  * rfc4251bool		bool
  * rfc4251uint32	uint32
  * rfc4251uint64	uint64
- * rfc4251string	string, incl. mpint and (without splitting) name-list
+ * rfc4251string	string, incl. mpint and name-list
  *
  * those structs contain the objects in their RFC 4251 representation,
  * conversions are provided via constructors and cast operators
@@ -168,6 +168,7 @@ struct rfc4251string {
 	inline explicit rfc4251string (char const *);
 	inline explicit rfc4251string (char const *, size_t);
 	inline explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
+	inline explicit rfc4251string (std::vector<std::string> const &);
 	inline explicit rfc4251string (mpz_srcptr);
 	inline explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
 
@@ -175,6 +176,7 @@ struct rfc4251string {
 	rfc4251string & operator= (rfc4251string &&) = default;
 
 	inline operator std::string () const;
+	inline operator std::vector<std::string> () const;
 	inline operator mpz_class () const;
 };
 
@@ -185,6 +187,16 @@ inline rfc4251string::rfc4251string (char const * s) {
 
 inline rfc4251string::rfc4251string (char const * s, size_t l) {
 	value.insert(value.end(), s, s + l);
+}
+
+inline rfc4251string::rfc4251string (std::vector<std::string> const & v) {
+	if (v.size()) {
+		value.assign(v.begin()->data(), v.begin()->data() + v.begin()->size());
+		for (auto it = v.begin() + 1; it != v.end(); ++it) {
+			value.push_back(',');
+			value.insert(value.end(), it->data(), it->data() + it->size());
+		}
+	}
 }
 
 inline rfc4251string::rfc4251string (mpz_srcptr x) {
@@ -213,6 +225,23 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 
 inline rfc4251string::operator std::string () const {
 	return std::string(value.begin(), value.end());
+}
+
+inline rfc4251string::operator std::vector<std::string> () const {
+	std::vector<std::string> ret;
+	auto name_start = value.begin();
+	if (name_start != value.end())
+		for (auto it = name_start; ; ++it) {
+			if (it == value.end() or *it == ',') {
+				if (it == name_start)
+					throw std::length_error("name of zero length");
+				ret.emplace_back(name_start, it);
+				name_start = it + 1;
+			}
+			if (it == value.end())
+				break;
+		}
+	return ret;
 }
 
 inline rfc4251string::operator mpz_class () const {
