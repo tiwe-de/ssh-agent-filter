@@ -180,26 +180,22 @@ struct rfc4251string {
 
 inline rfc4251string::rfc4251string (char const * s) {
 	auto len = ntohl(*reinterpret_cast<uint32_t const *>(s));
-	value.insert(value.begin(), s, s + 4 + len);
+	value.insert(value.begin(), s + 4, s + 4 + len);
 }
 
 inline rfc4251string::rfc4251string (char const * s, size_t l) {
-	rfc4251uint32 tmp(l);
-	value.insert(value.end(), std::begin(tmp.buf), std::end(tmp.buf));
 	value.insert(value.end(), s, s + l);
 }
 
 inline rfc4251string::rfc4251string (mpz_srcptr x) {
-	if (mpz_sgn(x) == 0)
-		value.assign(4, 0);
-	else if (mpz_sgn(x) == 1) {
+	if (mpz_sgn(x) == 0) {
+	} else if (mpz_sgn(x) == 1) {
 		ssize_t bits = mpz_sizeinbase(x, 2);
 		ssize_t bytes = (bits + 7) / 8;
 		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 to keep it non-negative
-		value.resize(4 + bytes + extrabyte);
-		*reinterpret_cast<uint32_t *>(value.data()) = htonl(bytes + extrabyte);
-		value[4] = 0;
-		mpz_export(value.data() + 4 + extrabyte, nullptr, 1, 1, 1, 0, x);
+		value.resize(bytes + extrabyte);
+		value[0] = 0;
+		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
 	} else {
 		mpz_class tmp(x);
 		tmp += 1;
@@ -207,23 +203,22 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 		ssize_t bits = mpz_sizeinbase(x, 2);
 		ssize_t bytes = (bits + 7) / 8;
 		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 (0 after ^= below) to keep it negative
-		value.resize(4 + bytes + extrabyte);
-		*reinterpret_cast<uint32_t *>(value.data()) = htonl(bytes + extrabyte);
-		value[4] = 0;
-		mpz_export(value.data() + 4 + extrabyte, nullptr, 1, 1, 1, 0, x);
-		for (auto i = value.data() + 4; i < value.data() + value.size(); ++i)
-			*i ^= 0xff;
+		value.resize(bytes + extrabyte);
+		value[0] = 0;
+		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
+		for (auto & i : value)
+			i ^= 0xff;
 	}
 }
 
 inline rfc4251string::operator std::string () const {
-	return std::string(value.begin() + 4, value.end());
+	return std::string(value.begin(), value.end());
 }
 
 inline rfc4251string::operator mpz_class () const {
 	mpz_class ret;
-	mpz_import(ret.get_mpz_t(), value.size() - 4, 1, 1, 1, 0, value.data() + 4);
-	if (mpz_sizeinbase(ret.get_mpz_t(), 2) == (value.size() - 4) * 8) { // negative
+	mpz_import(ret.get_mpz_t(), value.size(), 1, 1, 1, 0, value.data());
+	if (mpz_sizeinbase(ret.get_mpz_t(), 2) == value.size() * 8) { // negative
 		mpz_com(ret.get_mpz_t(), ret.get_mpz_t());
 		ret += 1;
 		mpz_neg(ret.get_mpz_t(), ret.get_mpz_t());
@@ -232,17 +227,19 @@ inline rfc4251string::operator mpz_class () const {
 }
 
 inline std::istream & operator>> (std::istream & is, rfc4251string & s) {
-	s.value.resize(4);
-	if (is.read(s.value.data(), 4)) {
-		auto len = ntohl(*reinterpret_cast<uint32_t const *>(s.value.data()));
-		s.value.resize(4 + len);
-		is.read(s.value.data() + 4, len);
+	s.value.clear();
+	rfc4251uint32 len;
+	if (is >> len) {
+		s.value.resize(len);
+		is.read(s.value.data(), len);
 	}
 	return is;
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251string const & s) {
-	return os.write(s.value.data(), s.value.size());
+	if (os << rfc4251uint32(s.value.size()))
+		os.write(s.value.data(), s.value.size());
+	return os;
 }
 
 inline bool operator== (rfc4251string const & l, rfc4251string const & r) {
