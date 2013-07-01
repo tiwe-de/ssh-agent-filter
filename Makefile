@@ -21,7 +21,10 @@ CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 CXXFLAGS += -std=c++11
 LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system -lnettle
 
-all: ssh-agent-filter.1
+all: ssh-agent-filter.1 afssh.1
+
+%.1: %.1.md
+	pandoc -s -w man $< -o $@
 
 ssh-agent-filter.1: ssh-agent-filter
 	help2man -n $< -o $@ -N ./$<
@@ -34,6 +37,6 @@ version.h:
 	test ! -d .git || git describe | sed 's/^.*$$/#define SSH_AGENT_FILTER_VERSION "ssh-agent-filter \0"/' > $@
 
 clean:
-	$(RM) ssh-agent-filter.1 ssh-agent-filter *.o
+	$(RM) *.1 ssh-agent-filter *.o
 
 .PHONY: version.h
