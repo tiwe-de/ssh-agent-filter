@@ -326,7 +326,6 @@ void handle_client (int const sock) {
 
 void sighandler (int sig) {
 	switch (sig) {
-		case SIGINT:
 		case SIGPIPE:
 			break;
 		default:
@@ -363,12 +362,12 @@ int main (int const argc, char const * const * const argv) {
 		dup2(devnull, 1);
 		dup2(devnull, 2);
 		close(devnull);
-
-		signal(SIGINT, sighandler);
-		signal(SIGPIPE, sighandler);
-		signal(SIGHUP, sighandler);
-		signal(SIGTERM, sighandler);
 	}
+	
+	signal(SIGINT, sighandler);
+	signal(SIGPIPE, sighandler);
+	signal(SIGHUP, sighandler);
+	signal(SIGTERM, sighandler);
 
 	int client_sock;
 	while ((client_sock = accept(listen_sock, nullptr, nullptr)) != -1) {
