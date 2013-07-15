@@ -152,8 +152,8 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 		("version,V",		"print version information")
 		;
 	po::variables_map config;
-	po::store(po::parse_command_line(argc, argv, opts), config);
-	po::notify(config);
+	store(parse_command_line(argc, argv, opts), config);
+	notify(config);
 	
 	if (config.count("help")) {
 		std::cout << "Invocation: ssh-agent-filter [ OPTIONS ]" << std::endl;
