@@ -135,7 +135,7 @@ struct rfc4251uint64 {
 };
 
 inline rfc4251uint64::rfc4251uint64 (uint64_t v) {
-	for (int_fast8_t i = 7; i >= 0; --i) {
+	for (int_fast8_t i{7}; i >= 0; --i) {
 		buf[i] = v & 0xff;
 		v >>= 8;
 	}
@@ -143,7 +143,7 @@ inline rfc4251uint64::rfc4251uint64 (uint64_t v) {
 
 inline rfc4251uint64::operator uint64_t () const {
 	uint64_t ret{0};
-	for (uint_fast8_t i = 0; i < 8; ++i) {
+	for (uint_fast8_t i{0}; i < 8; ++i) {
 		ret |= buf[i];
 		ret <<= 8;
 	}
@@ -209,21 +209,21 @@ inline rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 inline rfc4251string::rfc4251string (mpz_srcptr x) {
 	if (mpz_sgn(x) == 0) {
 	} else if (mpz_sgn(x) == 1) {
-		ssize_t bits = mpz_sizeinbase(x, 2);
-		ssize_t bytes = (bits + 7) / 8;
-		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 to keep it non-negative
+		size_t bits{mpz_sizeinbase(x, 2)};
+		size_t bytes{(bits + 7) / 8};
+		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 to keep it non-negative
 		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
 			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 		value.resize(bytes + extrabyte);
 		value[0] = 0;
 		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
 	} else {
-		mpz_class tmp(x);
+		mpz_class tmp{x};
 		tmp += 1;
 		x = tmp.get_mpz_t();
-		ssize_t bits = mpz_sizeinbase(x, 2);
-		ssize_t bytes = (bits + 7) / 8;
-		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 (0 after ^= below) to keep it negative
+		size_t bits{mpz_sizeinbase(x, 2)};
+		size_t bytes{(bits + 7) / 8};
+		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 (0 after ^= below) to keep it negative
 		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
 			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 		value.resize(bytes + extrabyte);
@@ -235,7 +235,7 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 }
 
 inline rfc4251string::operator std::string () const {
-	return std::string(value.begin(), value.end());
+	return {value.begin(), value.end()};
 }
 
 inline rfc4251string::operator std::vector<std::string> () const {
@@ -245,7 +245,7 @@ inline rfc4251string::operator std::vector<std::string> () const {
 		for (auto it = name_start; ; ++it) {
 			if (it == value.end() or *it == ',') {
 				if (it == name_start)
-					throw std::length_error("name of zero length");
+					throw std::length_error{"name of zero length"};
 				ret.emplace_back(name_start, it);
 				name_start = it + 1;
 			}
@@ -279,7 +279,7 @@ inline std::istream & operator>> (std::istream & is, rfc4251string & s) {
 inline std::ostream & operator<< (std::ostream & os, rfc4251string const & s) {
 	if (s.value.size() > std::numeric_limits<uint32_t>::max())
 		throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-	if (os << rfc4251uint32(s.value.size()))
+	if (os << rfc4251uint32{static_cast<uint32_t>(s.value.size())})
 		os.write(s.value.data(), s.value.size());
 	return os;
 }

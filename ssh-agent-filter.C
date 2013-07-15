@@ -66,7 +66,7 @@ std::string md5_hex (std::string const & s) {
 	md5_digest(&ctx, MD5_DIGEST_SIZE, bin);
 	uint8_t hex[BASE16_ENCODE_LENGTH(MD5_DIGEST_SIZE)];
 	base16_encode_update(hex, MD5_DIGEST_SIZE, bin);
-	return std::string(reinterpret_cast<char const *>(hex), sizeof(hex));
+	return {reinterpret_cast<char const *>(hex), sizeof(hex)};
 }
 
 std::string base64_encode (std::string const & s) {
@@ -75,7 +75,7 @@ std::string base64_encode (std::string const & s) {
 	uint8_t b64[BASE64_ENCODE_LENGTH(s.size())];
 	auto len = base64_encode_update(&ctx, b64, s.size(), reinterpret_cast<uint8_t const *>(s.data()));
 	len += base64_encode_final(&ctx, b64 + len);
-	return std::string(reinterpret_cast<char const *>(b64), len);
+	return {reinterpret_cast<char const *>(b64), len};
 }
 
 int make_upstream_agent_conn () {
@@ -142,7 +142,7 @@ int make_listen_sock () {
 }
 
 void parse_cmdline (int const argc, char const * const * const argv) {
-	po::options_description opts("OPTIONS");
+	po::options_description opts{"OPTIONS"};
 	opts.add_options()
 		("comment,c",		po::value(&allowed_comment),	"key specified by comment")
 		("debug,d",		po::bool_switch(&debug),	"show some debug info, don't fork")
@@ -177,19 +177,19 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 }
 
 void setup_filters () {
-	__gnu_cxx::stdio_filebuf<char> agent_filebuf(make_upstream_agent_conn(), std::ios::in | std::ios::out);
-	std::iostream agent(&agent_filebuf);
+	__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+	std::iostream agent{&agent_filebuf};
 	agent.exceptions(std::ios::badbit | std::ios::failbit);
 	
-	agent << rfc4251string(std::string(1, SSH2_AGENTC_REQUEST_IDENTITIES));
+	agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 	rfc4251string answer;
 	agent >> answer;
-	std::istringstream answer_iss(answer);
+	std::istringstream answer_iss{answer};
 	answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
 	rfc4251byte resp_code;
 	answer_iss >> resp_code;
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
-		throw std::runtime_error("unexpected answer from ssh-agent");
+		throw std::runtime_error{"unexpected answer from ssh-agent"};
 	rfc4251uint32 keycount;
 	answer_iss >> keycount;
 	for (uint32_t i = keycount; i; --i) {
@@ -224,7 +224,7 @@ void setup_filters () {
 }
 
 rfc4251string handle_request (rfc4251string const & r) {
-	std::istringstream request(r);
+	std::istringstream request{r};
 	std::ostringstream answer;
 	request.exceptions(std::ios::badbit | std::ios::failbit);
 	answer.exceptions(std::ios::badbit | std::ios::failbit);
@@ -233,20 +233,20 @@ rfc4251string handle_request (rfc4251string const & r) {
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
-				__gnu_cxx::stdio_filebuf<char> agent_filebuf(make_upstream_agent_conn(), std::ios::in | std::ios::out);
-				std::iostream agent(&agent_filebuf);
+				__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+				std::iostream agent{&agent_filebuf};
 				agent.exceptions(std::ios::badbit | std::ios::failbit);
 				rfc4251string agent_answer;
-				agent << rfc4251string(std::string(1, SSH2_AGENTC_REQUEST_IDENTITIES));
+				agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				agent >> agent_answer;
 				// temp to test key filtering when signing
 				//return agent_answer;
-				std::istringstream agent_answer_iss(agent_answer);
+				std::istringstream agent_answer_iss{agent_answer};
 				rfc4251byte answer_code;
 				rfc4251uint32 keycount;
 				agent_answer_iss >> answer_code >> keycount;
 				if (answer_code != SSH2_AGENT_IDENTITIES_ANSWER)
-					throw std::runtime_error("unexpected answer from ssh-agent");
+					throw std::runtime_error{"unexpected answer from ssh-agent"};
 				std::vector<std::pair<rfc4251string, rfc4251string>> keys;
 				for (uint32_t i = keycount; i; --i) {
 					rfc4251string key;
@@ -255,7 +255,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 					if (allowed_pubkeys.count(key))
 						keys.emplace_back(std::move(key), std::move(comment));
 				}
-				answer << answer_code << rfc4251uint32(keys.size());
+				answer << answer_code << rfc4251uint32{static_cast<uint32_t>(keys.size())};
 				for (auto const & k : keys)
 					answer << k.first << k.second;
 			}
@@ -265,8 +265,8 @@ rfc4251string handle_request (rfc4251string const & r) {
 				rfc4251string key;
 				request >> key;
 				if (allowed_pubkeys.count(key)) {
-					__gnu_cxx::stdio_filebuf<char> agent_filebuf(make_upstream_agent_conn(), std::ios::in | std::ios::out);
-					std::iostream agent(&agent_filebuf);
+					__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+					std::iostream agent{&agent_filebuf};
 					agent.exceptions(std::ios::badbit | std::ios::failbit);
 					rfc4251string agent_answer;
 					
@@ -274,16 +274,16 @@ rfc4251string handle_request (rfc4251string const & r) {
 					agent >> agent_answer;
 					return agent_answer;
 				} else
-					answer << rfc4251byte(SSH_AGENT_FAILURE);
+					answer << rfc4251byte{SSH_AGENT_FAILURE};
 			}
 			break;
 		case SSH_AGENTC_REQUEST_RSA_IDENTITIES:
-			answer << rfc4251byte(SSH_AGENT_RSA_IDENTITIES_ANSWER);
+			answer << rfc4251byte{SSH_AGENT_RSA_IDENTITIES_ANSWER};
 			// we got no SSHv1 keys
-			answer << rfc4251uint32(0);
+			answer << rfc4251uint32{0};
 			break;
 		case SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES:
-			answer << rfc4251byte(SSH_AGENT_SUCCESS);
+			answer << rfc4251byte{SSH_AGENT_SUCCESS};
 			break;
 		case SSH_AGENTC_RSA_CHALLENGE:
 		case SSH_AGENTC_ADD_RSA_IDENTITY:
@@ -299,21 +299,21 @@ rfc4251string handle_request (rfc4251string const & r) {
 		case SSH_AGENTC_UNLOCK:
 		case SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED:
 		default:
-			answer << rfc4251byte(SSH_AGENT_FAILURE);
+			answer << rfc4251byte{SSH_AGENT_FAILURE};
 			break;
 	}
 
-	return rfc4251string(answer.str());
+	return rfc4251string{answer.str()};
 }
 
 void handle_client (int const sock) {
 	// we could use only one streambuf and iostream but when
 	// switching from read to write an lseek call is made that
 	// fails with ESPIPE and causes an exception
-	__gnu_cxx::stdio_filebuf<char> client_filebuf_in(sock, std::ios::in);
-	__gnu_cxx::stdio_filebuf<char> client_filebuf_out(sock, std::ios::out);
-	std::istream client_in(&client_filebuf_in);
-	std::ostream client_out(&client_filebuf_out);
+	__gnu_cxx::stdio_filebuf<char> client_filebuf_in{sock, std::ios::in};
+	__gnu_cxx::stdio_filebuf<char> client_filebuf_out{sock, std::ios::out};
+	std::istream client_in{&client_filebuf_in};
+	std::ostream client_out{&client_filebuf_out};
 	client_out.exceptions(std::ios::badbit | std::ios::failbit);
 	
 	rfc4251string request;
@@ -371,7 +371,7 @@ int main (int const argc, char const * const * const argv) {
 
 	int client_sock;
 	while ((client_sock = accept(listen_sock, nullptr, nullptr)) != -1) {
-		std::thread t(handle_client, client_sock);
+		std::thread t{handle_client, client_sock};
 		t.detach();
 	}
 }
