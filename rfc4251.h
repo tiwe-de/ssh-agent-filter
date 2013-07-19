@@ -31,6 +31,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <limits>
 #include <arpa/inet.h>	// ntohl() / htonl()
 #include <gmpxx.h>
 
@@ -186,13 +187,19 @@ inline rfc4251string::rfc4251string (char const * s) {
 }
 
 inline rfc4251string::rfc4251string (char const * s, size_t l) {
+	if (l > std::numeric_limits<uint32_t>::max())
+		throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 	value.insert(value.end(), s, s + l);
 }
 
 inline rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	if (v.size()) {
+		if (v.begin()->size() > std::numeric_limits<uint32_t>::max())
+			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 		value.assign(v.begin()->data(), v.begin()->data() + v.begin()->size());
 		for (auto it = v.begin() + 1; it != v.end(); ++it) {
+			if (value.size() + 1 + it->size() > std::numeric_limits<uint32_t>::max())
+				throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 			value.push_back(',');
 			value.insert(value.end(), it->data(), it->data() + it->size());
 		}
@@ -205,6 +212,8 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 		ssize_t bits = mpz_sizeinbase(x, 2);
 		ssize_t bytes = (bits + 7) / 8;
 		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 to keep it non-negative
+		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
+			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 		value.resize(bytes + extrabyte);
 		value[0] = 0;
 		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
@@ -215,6 +224,8 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 		ssize_t bits = mpz_sizeinbase(x, 2);
 		ssize_t bytes = (bits + 7) / 8;
 		ssize_t extrabyte = bits % 8 ? 0 : 1; // need extra byte if MSB is 1 (0 after ^= below) to keep it negative
+		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
+			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 		value.resize(bytes + extrabyte);
 		value[0] = 0;
 		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
@@ -266,6 +277,8 @@ inline std::istream & operator>> (std::istream & is, rfc4251string & s) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251string const & s) {
+	if (s.value.size() > std::numeric_limits<uint32_t>::max())
+		throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 	if (os << rfc4251uint32(s.value.size()))
 		os.write(s.value.data(), s.value.size());
 	return os;
