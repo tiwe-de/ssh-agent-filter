@@ -38,5 +38,6 @@ version.h:
 
 clean:
 	$(RM) *.1 ssh-agent-filter *.o
+	test ! -d .git || git checkout -f -- version.h
 
 .PHONY: version.h
