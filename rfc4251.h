@@ -42,13 +42,7 @@ struct rfc4251byte {
 	};
 
 	rfc4251byte () = default;
-	rfc4251byte (rfc4251byte const &) = default;
-	rfc4251byte (rfc4251byte &&) = default;
-
 	inline explicit rfc4251byte (uint8_t v) : value(v) {}
-
-	rfc4251byte & operator= (rfc4251byte const &) = default;
-	rfc4251byte & operator= (rfc4251byte &&) = default;
 
 	inline operator uint8_t () const { return value; }
 };
@@ -69,13 +63,8 @@ struct rfc4251bool {
 	};
 
 	rfc4251bool () = default;
-	rfc4251bool (rfc4251bool const &) = default;
-	rfc4251bool (rfc4251bool &&) = default;
-
 	inline explicit rfc4251bool (uint8_t v) : value(v) {}
 
-	rfc4251bool & operator= (rfc4251bool const &) = default;
-	rfc4251bool & operator= (rfc4251bool &&) = default;
 
 	inline operator uint8_t () const { return value; }
 };
@@ -96,13 +85,8 @@ struct rfc4251uint32 {
 	};
 
 	rfc4251uint32 () = default;
-	rfc4251uint32 (rfc4251uint32 const &) = default;
-	rfc4251uint32 (rfc4251uint32 &&) = default;
-
 	inline explicit rfc4251uint32 (uint32_t v) { value = htonl(v); }
 
-	rfc4251uint32 & operator= (rfc4251uint32 const &) = default;
-	rfc4251uint32 & operator= (rfc4251uint32 &&) = default;
 
 	inline operator uint32_t () const { return ntohl(value); }
 };
@@ -123,13 +107,7 @@ struct rfc4251uint64 {
 	};
 
 	rfc4251uint64 () = default;
-	rfc4251uint64 (rfc4251uint64 const &) = default;
-	rfc4251uint64 (rfc4251uint64 &&) = default;
-
 	inline explicit rfc4251uint64 (uint64_t v);
-
-	rfc4251uint64 & operator= (rfc4251uint64 const &) = default;
-	rfc4251uint64 & operator= (rfc4251uint64 &&) = default;
 
 	inline explicit operator uint64_t () const;
 };
@@ -163,18 +141,12 @@ struct rfc4251string {
 	std::vector<char> value;
 	
 	rfc4251string () = default;
-	rfc4251string (rfc4251string const &) = default;
-	rfc4251string (rfc4251string &&) = default;
-	
 	inline explicit rfc4251string (char const *);
 	inline explicit rfc4251string (char const *, size_t);
 	inline explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
 	inline explicit rfc4251string (std::vector<std::string> const &);
 	inline explicit rfc4251string (mpz_srcptr);
 	inline explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
-
-	rfc4251string & operator= (rfc4251string const &) = default;
-	rfc4251string & operator= (rfc4251string &&) = default;
 
 	inline operator std::string () const;
 	inline operator std::vector<std::string> () const;
