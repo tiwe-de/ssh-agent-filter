@@ -1,0 +1,55 @@
+_ssh-agent-filter () {
+	local cur prev words cword opts
+	_init_completion -n : || return
+
+	_quote_readline_by_ref "$cur" cur
+	
+	opts="--comment --debug --fingerprint --help --key --version"
+	
+	case "$prev" in
+		-c|--comment)
+			# hm, key comments might contain anything, how can I quote them ?
+			local comments="$(ssh-add -L | cut -d\  -f3- )"
+			COMPREPLY=( $(compgen -W "$comments" -- "$cur") )
+			return 0
+			;;
+		-f|--fp|--fingerprint)
+			# fingerprints contain many colons
+			local fingerprints="$(ssh-add -l | cut -d\  -f2 )"
+			COMPREPLY=( $(compgen -W "$fingerprints" -- "$cur") )
+			__ltrim_colon_completions "$cur"
+			return 0
+			;;
+		-k|--key)
+			# this is base64, no quoting needed
+			local keys="$(ssh-add -L | cut -d\  -f2 )"
+			COMPREPLY=( $(compgen -W "$keys" -- "$cur") )
+			return 0
+			;;
+	esac
+	
+	COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
+	return 0
+} && complete -F _ssh-agent-filter ssh-agent-filter
+
+_ssh-agent-filter_have_dash-dash () {
+	local i
+	for (( i=0 ; i < cword ; i++ )) ; do
+		[ "${words[$i]}" = -- ] && return 0
+	done
+	return 1
+}
+
+_afssh () {
+	local cur prev words cword
+	_init_completion -n : || return
+	
+	if _ssh-agent-filter_have_dash-dash; then
+		# complete ssh
+		_xfunc ssh _ssh
+	else
+		_ssh-agent-filter
+	fi
+} && complete -F _afssh afssh
+
+# vim:ft=sh:
