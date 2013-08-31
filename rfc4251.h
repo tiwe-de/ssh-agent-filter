@@ -163,22 +163,24 @@ inline rfc4251string::rfc4251string (char const * s, size_t l) {
 }
 
 rfc4251string::rfc4251string (std::vector<std::string> const & v) {
-	if (v.size()) {
-		if (v.begin()->size() > std::numeric_limits<uint32_t>::max())
+	for (auto it = v.begin(); it != v.end();) {
+		if (it->size() == 0)
+			throw std::length_error{"name of zero length"};
+		if (value.size() + it->size() > std::numeric_limits<uint32_t>::max())
 			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-		value.assign(v.begin()->data(), v.begin()->data() + v.begin()->size());
-		for (auto it = v.begin() + 1; it != v.end(); ++it) {
-			if (value.size() + 1 + it->size() > std::numeric_limits<uint32_t>::max())
-				throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-			value.push_back(',');
-			value.insert(value.end(), it->data(), it->data() + it->size());
-		}
+		value.insert(value.end(), it->data(), it->data() + it->size());
+		++it;
+		if (it == v.end())
+			break;
+		value.push_back(',');
 	}
 }
 
 rfc4251string::rfc4251string (mpz_srcptr x) {
-	if (mpz_sgn(x) == 0) {
-	} else if (mpz_sgn(x) == 1) {
+	if (mpz_sgn(x) == 0)
+		return;
+
+	auto const import_positive = [] (mpz_srcptr x, std::vector<char> & value) {
 		size_t bits{mpz_sizeinbase(x, 2)};
 		size_t bytes{(bits + 7) / 8};
 		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 to keep it non-negative
@@ -187,18 +189,14 @@ rfc4251string::rfc4251string (mpz_srcptr x) {
 		value.resize(bytes + extrabyte);
 		value[0] = 0;
 		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
-	} else {
+	};
+	if (mpz_sgn(x) == 1)
+		import_positive(x, value);
+	else {
+		// handle two's complement: add 1, invert all bits
 		mpz_class tmp{x};
 		tmp += 1;
-		x = tmp.get_mpz_t();
-		size_t bits{mpz_sizeinbase(x, 2)};
-		size_t bytes{(bits + 7) / 8};
-		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 (0 after ^= below) to keep it negative
-		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
-			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-		value.resize(bytes + extrabyte);
-		value[0] = 0;
-		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
+		import_positive(tmp.get_mpz_t(), value);
 		for (auto & i : value)
 			i ^= 0xff;
 	}
