@@ -42,9 +42,9 @@ struct rfc4251byte {
 	};
 
 	rfc4251byte () = default;
-	inline explicit rfc4251byte (uint8_t v) : value(v) {}
+	explicit rfc4251byte (uint8_t v) : value(v) {}
 
-	inline operator uint8_t () const { return value; }
+	operator uint8_t () const { return value; }
 };
 
 inline std::istream & operator>> (std::istream & is, rfc4251byte & x) {
@@ -63,10 +63,9 @@ struct rfc4251bool {
 	};
 
 	rfc4251bool () = default;
-	inline explicit rfc4251bool (uint8_t v) : value(v) {}
+	explicit rfc4251bool (uint8_t v) : value(v) {}
 
-
-	inline operator uint8_t () const { return value; }
+	operator uint8_t () const { return value; }
 };
 
 inline std::istream & operator>> (std::istream & is, rfc4251bool & x) {
@@ -85,10 +84,9 @@ struct rfc4251uint32 {
 	};
 
 	rfc4251uint32 () = default;
-	inline explicit rfc4251uint32 (uint32_t v) { value = htonl(v); }
+	explicit rfc4251uint32 (uint32_t v) { value = htonl(v); }
 
-
-	inline operator uint32_t () const { return ntohl(value); }
+	operator uint32_t () const { return ntohl(value); }
 };
 
 inline std::istream & operator>> (std::istream & is, rfc4251uint32 & x) {
@@ -143,14 +141,14 @@ struct rfc4251string {
 	rfc4251string () = default;
 	inline explicit rfc4251string (char const *);
 	inline explicit rfc4251string (char const *, size_t);
-	inline explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
-	inline explicit rfc4251string (std::vector<std::string> const &);
-	inline explicit rfc4251string (mpz_srcptr);
-	inline explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
+	explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
+	explicit rfc4251string (std::vector<std::string> const &);
+	explicit rfc4251string (mpz_srcptr);
+	explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
 
-	inline operator std::string () const;
-	inline operator std::vector<std::string> () const;
-	inline operator mpz_class () const;
+	operator std::string () const { return {value.begin(), value.end()}; }
+	operator std::vector<std::string> () const;
+	operator mpz_class () const;
 };
 
 inline rfc4251string::rfc4251string (char const * s) {
@@ -164,7 +162,7 @@ inline rfc4251string::rfc4251string (char const * s, size_t l) {
 	value.insert(value.end(), s, s + l);
 }
 
-inline rfc4251string::rfc4251string (std::vector<std::string> const & v) {
+rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	if (v.size()) {
 		if (v.begin()->size() > std::numeric_limits<uint32_t>::max())
 			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
@@ -178,7 +176,7 @@ inline rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	}
 }
 
-inline rfc4251string::rfc4251string (mpz_srcptr x) {
+rfc4251string::rfc4251string (mpz_srcptr x) {
 	if (mpz_sgn(x) == 0) {
 	} else if (mpz_sgn(x) == 1) {
 		size_t bits{mpz_sizeinbase(x, 2)};
@@ -206,11 +204,7 @@ inline rfc4251string::rfc4251string (mpz_srcptr x) {
 	}
 }
 
-inline rfc4251string::operator std::string () const {
-	return {value.begin(), value.end()};
-}
-
-inline rfc4251string::operator std::vector<std::string> () const {
+rfc4251string::operator std::vector<std::string> () const {
 	std::vector<std::string> ret;
 	auto name_start = value.begin();
 	if (name_start != value.end())
@@ -227,7 +221,7 @@ inline rfc4251string::operator std::vector<std::string> () const {
 	return ret;
 }
 
-inline rfc4251string::operator mpz_class () const {
+rfc4251string::operator mpz_class () const {
 	mpz_class ret;
 	mpz_import(ret.get_mpz_t(), value.size(), 1, 1, 1, 0, value.data());
 	if (mpz_sizeinbase(ret.get_mpz_t(), 2) == value.size() * 8) { // negative
