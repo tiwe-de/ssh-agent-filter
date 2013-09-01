@@ -176,32 +176,6 @@ rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	}
 }
 
-rfc4251string::rfc4251string (mpz_srcptr x) {
-	if (mpz_sgn(x) == 0)
-		return;
-
-	auto const import_positive = [] (mpz_srcptr x, std::vector<char> & value) {
-		size_t bits{mpz_sizeinbase(x, 2)};
-		size_t bytes{(bits + 7) / 8};
-		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 to keep it non-negative
-		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
-			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-		value.resize(bytes + extrabyte);
-		value[0] = 0;
-		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
-	};
-	if (mpz_sgn(x) == 1)
-		import_positive(x, value);
-	else {
-		// handle two's complement: add 1, invert all bits
-		mpz_class tmp{x};
-		tmp += 1;
-		import_positive(tmp.get_mpz_t(), value);
-		for (auto & i : value)
-			i ^= 0xff;
-	}
-}
-
 rfc4251string::operator std::vector<std::string> () const {
 	std::vector<std::string> ret;
 	auto name_start = value.begin();
@@ -216,17 +190,6 @@ rfc4251string::operator std::vector<std::string> () const {
 			if (it == value.end())
 				break;
 		}
-	return ret;
-}
-
-rfc4251string::operator mpz_class () const {
-	mpz_class ret;
-	mpz_import(ret.get_mpz_t(), value.size(), 1, 1, 1, 0, value.data());
-	if (mpz_sizeinbase(ret.get_mpz_t(), 2) == value.size() * 8) { // negative
-		mpz_com(ret.get_mpz_t(), ret.get_mpz_t());
-		ret += 1;
-		mpz_neg(ret.get_mpz_t(), ret.get_mpz_t());
-	}
 	return ret;
 }
 
