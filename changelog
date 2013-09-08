@@ -1,0 +1,185 @@
+commit bd8e837efbc00eb49607ca493287d307ea47697b
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-01 12:32:55 +0200
+
+    move mpint/mpz conversion into separate file
+    
+    these functions need linking against libgmp
+
+commit 84ab40ff5fc9d19066c579fce94cd6c24d1d3b90
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-08-31 16:07:56 +0200
+
+    add basic bash-completion
+    
+    escaping of some special chars is not handled yet
+
+commit 9826dce1feec00b2759eb91c771068a11e77a219
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-08-31 18:14:01 +0200
+
+    reorganize import code for name-list and mpint
+    
+    reuse some common parts
+
+commit 21ec6082f66b6b5eb8ec6d4e9a03b7c3f101a07f
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-08-30 21:29:44 +0200
+
+    Makefile: add libstdc++ to LDFLAGS
+
+commit add51c0b13a3b2c2c3c35c5b2c87f0931df6ec94
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-08-31 18:18:19 +0200
+
+    remove some inline specifiers
+    
+    * from functions defined inside the struct
+    * from non-trivial functions
+
+commit b7ece6c5ba3670e653ce19d759e6cfb48e6cf4ff
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-08-26 11:56:14 +0200
+
+    remove declarations for default copy and move
+
+commit 19e42fff7ce4529720c0255e70c547a277cd9663
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-15 20:39:35 +0200
+
+    use more uniform initialization
+    
+    std::string(1, <some char>) becomes std::string{<some char>}
+    
+    also fix accidental use of ssize_t instead of size_t with gmp
+    
+    This yielded two warnings (-Wnarrowing) where a size_t is used to initialize
+    an rfc4251uint32, they were fixed with a cast.
+
+commit f2fe95a2720e31b66dc60c1109b05af7475f35db
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-19 21:35:50 +0200
+
+    rfc4251string: add length checks
+
+commit 6bc571e8e273f2c1efd12f83f43bb56f07242d32
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-19 21:29:25 +0200
+
+    Makefile: reset version.h on clean when in git
+
+commit 1b8707339da5b8d7fb976b49488b2752415850ae
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-15 23:59:22 +0200
+
+    remove unneeded namespace qualification, ADL works here
+
+commit ac2c716b4bdb463ba6dfd4a1b82595c3ea861d01
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-15 20:37:47 +0200
+
+    improve debug mode
+    
+    also clean up socket in debug mode
+    also exit when catching SIGINT
+
+commit 9e8adf8438d3ca343a9161725e6f0ff68e44832c
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-02 01:32:13 +0200
+
+    rfc4251string: implement name-list (as vector<string>)
+
+commit 6ba5bcba015ddcda1b81bd83a3dface81fdee52c
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-02 01:25:03 +0200
+
+    rfc4251string: don't store the length
+
+commit 23f63eb81167afaa14ecfbbfd30c106b70659fe5
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-01 16:04:04 +0200
+
+    add manpage for afssh(1)
+    
+    using pandoc to generate groff from markdown
+
+commit f35640624b3e02bd259533bdf453f55e003ee76b
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-07-01 16:20:15 +0200
+
+    fix README formatting, rename to README.md
+
+commit d177c0fc8d08da5af909ce810696541c6ac23750
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-20 18:59:41 +0200
+
+    add README
+
+commit 3db5e4a6aa2e85492638438dac5719ce633ad6f5
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-20 16:00:08 +0200
+
+    add detection for output to terminal vs. pipe
+
+commit e9f27a1f6c79fddabd5995a591a8398ca645c53f
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-20 15:56:49 +0200
+
+    afssh: add interactive key selection using whiptail/dialog
+
+commit 6064fef975a261aab7e92792c2a83687ae1fdb9e
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-20 15:54:30 +0200
+
+    afssh: add safeguard against empty or non-running ssh-agent
+
+commit 07557734129cd53acb5eff9d59b0d6144925e3e7
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-20 15:51:30 +0200
+
+    afssh: factor out usage
+
+commit 3c431f0dfb0223f95bf318d4fe209a81f36e88d1
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-18 12:35:28 +0200
+
+    documentation update
+    
+    ssh-agent-filter.C: remove remains of initial plan to wrap ssh in the filter
+    afssh: add --help
+
+commit 453e8a66e8ed850d9a7559c8269942969bad62c9
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-18 11:40:19 +0200
+
+    afssh: use temporary directory for socket
+
+commit 3693a5a901b237a0271c67bfd92b6fc4d87aa4f9 (tag: 0.1)
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-18 00:55:02 +0200
+
+    release 0.1
+
+commit 6650d5dd2f08c1d2fff9d4c35fce5428da2dd174
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-18 00:45:20 +0200
+
+    add afssh: wrapper around ssh-agent-filter and ssh
+
+commit 5a20fe397c6ca9818800ad183d603d5d1ab43a9d
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-18 00:23:26 +0200
+
+    remove double quoting caused by using boost::filesystem::path
+
+commit b97f64c5f81c682933ab667dca93e6713efefd51
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-17 20:43:56 +0200
+
+    fix description of debug option
+
+commit 7ed93d297cda37e9f0e89a54ab270d73e3cb4f3c
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-06-17 20:33:38 +0200
+
+    Initial commit
