@@ -1,0 +1,2 @@
+ssh-agent-filter usr/bin
+afssh usr/bin

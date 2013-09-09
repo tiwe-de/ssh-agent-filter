@@ -1,0 +1,5 @@
+ssh-agent-filter (0.2-1) unstable; urgency=low
+
+  * Initial release (Closes: #722950)
+
+ -- Timo Weingärtner <timo@tiwe.de>  Sun, 15 Sep 2013 14:19:54 +0200

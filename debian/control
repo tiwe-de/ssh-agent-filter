@@ -1,0 +1,20 @@
+Source: ssh-agent-filter
+Section: net
+Priority: extra
+Maintainer: Timo Weingärtner <timo@tiwe.de>
+Build-Depends: debhelper (>= 9), nettle-dev, libgmp-dev, libboost-program-options-dev, libboost-filesystem-dev, bash-completion, help2man, pandoc, pandoc-data
+Standards-Version: 3.9.4
+Homepage: https://github.com/tiwe-de/ssh-agent-filter
+Vcs-Git: git://github.com/tiwe-de/ssh-agent-filter.git -b debian
+Vcs-Browser: https://github.com/tiwe-de/ssh-agent-filter/tree/debian
+
+Package: ssh-agent-filter
+Architecture: any
+Multi-Arch: foreign
+Depends: ${shlibs:Depends}, ${misc:Depends}, openssh-client
+Recommends: whiptail | dialog
+Description: filtering proxy for ssh-agent
+ This package solves the all-or-nothing problem regarding ssh-agent
+ forwarding. It contains:
+  * ssh-agent-filter, the filtering proxy itself
+  * afssh, a wrapper around ssh-agent-filter and ssh
