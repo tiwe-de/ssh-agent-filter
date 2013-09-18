@@ -19,7 +19,7 @@ If there are no arguments before `--`, whiptail(1) or dialog(1) is used to ask t
 
 After setting up the ssh-agent-filter(1) ssh(1) is started with `-A` and the rest of the arguments (after `--`).
 
-When ssh(1) exits, the ssh-agent-filter(1) is killed to not leave tons of them 
+When ssh(1) exits, the ssh-agent-filter(1) is killed to not leave tons of them idling.
 
 # OPTIONS
 
