@@ -242,6 +242,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 				// temp to test key filtering when signing
 				//return agent_answer;
 				std::istringstream agent_answer_iss{agent_answer};
+				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
 				rfc4251byte answer_code;
 				rfc4251uint32 keycount;
 				agent_answer_iss >> answer_code >> keycount;
