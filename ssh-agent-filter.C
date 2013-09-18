@@ -362,6 +362,9 @@ int main (int const argc, char const * const * const argv) {
 		dup2(devnull, 1);
 		dup2(devnull, 2);
 		close(devnull);
+	} else {
+		std::cout << "copy this to another terminal:" << std::endl;
+		std::cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << std::endl;
 	}
 	
 	signal(SIGINT, sighandler);
