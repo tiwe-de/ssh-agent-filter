@@ -49,6 +49,9 @@ namespace fs = boost::filesystem;
 #include "ssh-agent.h"
 #include "version.h"
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
 
 std::vector<std::string> allowed_b64;
 std::vector<std::string> allowed_md5;
@@ -88,8 +91,12 @@ int make_upstream_agent_conn () {
 		exit(EX_UNAVAILABLE);
 	}
 
-	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
 		perror("socket");
+		exit(EX_UNAVAILABLE);
+	}
+	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
+		perror("fcntl");
 		exit(EX_UNAVAILABLE);
 	}
 	
@@ -114,8 +121,12 @@ int make_listen_sock () {
 	int sock;
 	struct sockaddr_un addr;
 	
-	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
 		perror("socket");
+		exit(EX_UNAVAILABLE);
+	}
+	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
+		perror("fcntl");
 		exit(EX_UNAVAILABLE);
 	}
 
