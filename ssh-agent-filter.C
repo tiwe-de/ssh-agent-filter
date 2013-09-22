@@ -37,9 +37,11 @@ namespace fs = boost::filesystem;
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <sysexits.h>
 #include <nettle/md5.h>
 #include <nettle/base64.h>
@@ -231,6 +233,27 @@ void setup_filters () {
 		}
 		
 		if (debug) std::clog << std::endl;
+	}
+}
+
+bool confirm (std::string const & question) {
+	char const * sap;
+	if (!(sap = getenv("SSH_ASKPASS")))
+		sap = "ssh-askpass";
+	pid_t pid = fork();
+	if (pid < 0)
+		throw std::runtime_error("fork()");
+	if (pid == 0) {
+		// child
+		char const * args[3] = { sap, question.c_str(), nullptr };
+		// see execvp(3p) for cast rationale
+		execvp(sap, const_cast<char * const *>(args));
+		perror("exec");
+		exit(EX_UNAVAILABLE);
+	} else {
+		// parent
+		int status;
+		return waitpid(pid, &status, 0) > 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0;
 	}
 }
 
