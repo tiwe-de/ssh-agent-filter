@@ -58,8 +58,14 @@ namespace fs = boost::filesystem;
 std::vector<std::string> allowed_b64;
 std::vector<std::string> allowed_md5;
 std::vector<std::string> allowed_comment;
+std::vector<std::string> confirmed_b64;
+std::vector<std::string> confirmed_md5;
+std::vector<std::string> confirmed_comment;
 std::set<rfc4251string> allowed_pubkeys;
+std::map<rfc4251string, std::string> confirmed_pubkeys;
 bool debug{false};
+bool all_confirmed{false};
+std::string saf_name;
 fs::path path;
 
 
@@ -157,12 +163,17 @@ int make_listen_sock () {
 void parse_cmdline (int const argc, char const * const * const argv) {
 	po::options_description opts{"OPTIONS"};
 	opts.add_options()
-		("comment,c",		po::value(&allowed_comment),	"key specified by comment")
-		("debug,d",		po::bool_switch(&debug),	"show some debug info, don't fork")
-		("fingerprint,fp,f",	po::value(&allowed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint")
-		("help,h",		"print this help message")
-		("key,k",		po::value(&allowed_b64),	"key specified by base64-encoded pubkey")
-		("version,V",		"print version information")
+		("all-confirmed,A",		po::bool_switch(&all_confirmed),"allow all other keys with confirmation")
+		("comment,c",			po::value(&allowed_comment),	"key specified by comment")
+		("comment-confirmed,C",		po::value(&confirmed_comment),	"key specified by comment, with confirmation")
+		("debug,d",			po::bool_switch(&debug),	"show some debug info, don't fork")
+		("fingerprint,fp,f",		po::value(&allowed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint")
+		("fingerprint-confirmed,F",	po::value(&confirmed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint, with confirmation")
+		("help,h",			"print this help message")
+		("key,k",			po::value(&allowed_b64),	"key specified by base64-encoded pubkey")
+		("key-confirmed,K",		po::value(&confirmed_b64),	"key specified by base64-encoded pubkey, with confirmation")
+		("name,n",			po::value(&saf_name),		"name for this instance of ssh-agent-filter, for confirmation puposes")
+		("version,V",			"print version information")
 		;
 	po::variables_map config;
 	store(parse_command_line(argc, argv, opts), config);
@@ -219,19 +230,45 @@ void setup_filters () {
 		std::string comm(comment);
 		if (debug) std::clog << comm << std::endl;
 		
+		bool allow{false};
+
 		if (std::count(allowed_b64.begin(), allowed_b64.end(), b64)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by equal base64 representation" << std::endl;
 		}
 		if (std::count(allowed_md5.begin(), allowed_md5.end(), md5)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by matching md5 fingerprint" << std::endl;
 		}
 		if (std::count(allowed_comment.begin(), allowed_comment.end(), comm)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by matching comment" << std::endl;
 		}
 		
+		if (allow) allowed_pubkeys.insert(std::move(key));
+		else {
+			bool confirm{false};
+			
+			if (std::count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by equal base64 representation" << std::endl;
+			}
+			if (std::count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by matching md5 fingerprint" << std::endl;
+			}
+			if (std::count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by matching comment" << std::endl;
+			}
+			if (all_confirmed) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by catch-all (-A)" << std::endl;
+			}
+			
+			if (confirm) confirmed_pubkeys.emplace(std::move(key), comment);
+		}
+
 		if (debug) std::clog << std::endl;
 	}
 }
