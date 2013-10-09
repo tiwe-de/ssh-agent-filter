@@ -245,7 +245,7 @@ void setup_filters () {
 			if (debug) std::clog << "key allowed by matching comment" << std::endl;
 		}
 		
-		if (allow) allowed_pubkeys.insert(std::move(key));
+		if (allow) allowed_pubkeys.emplace(std::move(key));
 		else {
 			bool confirm{false};
 			
@@ -266,7 +266,7 @@ void setup_filters () {
 				if (debug) std::clog << "key allowed with confirmation by catch-all (-A)" << std::endl;
 			}
 			
-			if (confirm) confirmed_pubkeys.emplace(std::move(key), comment);
+			if (confirm) confirmed_pubkeys.emplace(std::move(key), std::move(comm));
 		}
 
 		if (debug) std::clog << std::endl;
