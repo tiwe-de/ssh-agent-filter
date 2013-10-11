@@ -294,6 +294,27 @@ bool confirm (std::string const & question) {
 	}
 }
 
+bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
+	std::istringstream datastream{data};
+	datastream.exceptions(std::ios::badbit | std::ios::failbit);
+
+	// Format specified in RFC 4252 Section 7
+	rfc4251string session_identifier; datastream >> session_identifier;
+	rfc4251byte requesttype; datastream >> requesttype;
+	rfc4251string username; datastream >> username;
+	rfc4251string servicename; datastream >> servicename;
+	rfc4251string publickeystring; datastream >> publickeystring;
+	rfc4251bool shouldbetrue; datastream >> shouldbetrue;
+	rfc4251string publickeyalgorithm; datastream >> publickeyalgorithm;
+	rfc4251string publickey; datastream >> publickey;
+
+	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
+
+	return true;
+} catch (...) {
+	return false;
+}
+
 rfc4251string handle_request (rfc4251string const & r) {
 	std::istringstream request{r};
 	std::ostringstream answer;
@@ -324,7 +345,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 					rfc4251string key;
 					rfc4251string comment;
 					agent_answer_iss >> key >> comment;
-					if (allowed_pubkeys.count(key))
+					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
 						keys.emplace_back(std::move(key), std::move(comment));
 				}
 				answer << answer_code << rfc4251uint32{static_cast<uint32_t>(keys.size())};
@@ -335,8 +356,33 @@ rfc4251string handle_request (rfc4251string const & r) {
 		case SSH2_AGENTC_SIGN_REQUEST:
 			{
 				rfc4251string key;
-				request >> key;
-				if (allowed_pubkeys.count(key)) {
+				rfc4251string data;
+				rfc4251uint32 flags;
+				request >> key >> data >> flags;
+				bool allow{false};
+				
+				if (allowed_pubkeys.count(key))
+					allow = true;
+				else {
+					auto it = confirmed_pubkeys.find(key);
+					if (it != confirmed_pubkeys.end()) {
+						std::string request_description;
+						bool dissect_ok{false};
+						if (!dissect_ok)
+							dissect_ok = dissect_auth_data_ssh(data, request_description);
+						if (!dissect_ok)
+							request_description = "The request format is unknown.";
+						
+						std::string question = "Something behind the ssh-agent-filter";
+						if (saf_name.length())
+							question += " named " + saf_name;
+						question += " requested use of the key named '" + it->second + "'.\n";
+						question += request_description;
+						allow = confirm(question);
+					}
+				}
+				
+				if (allow) {
 					__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
 					std::iostream agent{&agent_filebuf};
 					agent.exceptions(std::ios::badbit | std::ios::failbit);
