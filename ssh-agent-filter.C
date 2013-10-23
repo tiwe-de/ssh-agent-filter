@@ -375,7 +375,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 						
 						std::string question = "Something behind the ssh-agent-filter";
 						if (saf_name.length())
-							question += " named " + saf_name;
+							question += " named '" + saf_name + "'";
 						question += " requested use of the key named '" + it->second + "'.\n";
 						question += request_description;
 						allow = confirm(question);
