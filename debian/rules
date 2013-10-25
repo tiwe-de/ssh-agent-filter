@@ -1,3 +1,3 @@
 #!/usr/bin/make -f
 %:
-	dh $@ --with bash-completion
+	dh $@ --with bash-completion --parallel
