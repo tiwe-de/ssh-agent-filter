@@ -13,20 +13,27 @@ our solution
 ------------
 
 1. create one key(pair) for each realm you connect to
-2. load keys into your ssh-agent as usual
-3. use ssh-agent-filter to allow only the key(s) you need
+2. load keys into your `ssh-agent` as usual
+3. use `ssh-agent-filter` to allow only the key(s) you need
 
-afssh (agent filtered ssh) can wrap ssh-agent-filter and ssh for you:
+`afssh` (agent filtered ssh) can wrap `ssh-agent-filter` and `ssh` for you, forwarding only the key with the comment `id_example`:
 
-    $ afssh -c id_example -- example.com
+    $ afssh --comment id_example -- example.com
 
-starts an `ssh-agent-filter -c id_example`, runs `ssh -A example.com` and kills the ssh-agent-filter afterwards.
+starts an `ssh-agent-filter --comment id_example`, runs `ssh -A example.com` and kills the `ssh-agent-filter` afterwards.
 
 If you leave out the options before the `--`:
 
     $ afssh -- example.com
 
-it will ask you via whiptail or dialog which keys you want to have forwarded.
+it will ask you via `whiptail` or `dialog` which keys you want to have forwarded.
+
+
+confirmation
+------------
+
+You can use the `--*-confirmed` options (e.g.`--comment-confirmed`) to add keys for which you want to be asked on each use through the filter.
+The confirmation is done in the same way as when you `ssh-add -c` a key to your `ssh-agent`, but the question will contain some additional information extracted from the sign request.
 
 
 how it works
