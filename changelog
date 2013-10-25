@@ -1,3 +1,104 @@
+commit 5d55704009d1052db6f4039544aedb17ca8f541b
+Author: chrysn <chrysn@fsfe.org>
+Date:   2013-10-26 00:50:36 +0200
+
+    ssh-askpass-noinput: a simpler confirmation dialog
+    
+    this adds an ssh-askpass imlementation that will only show allow/deny
+    buttons and is based on zenity.
+
+commit d8b50eb96e4e4f971803fcf2ba30312b2dac9d08
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-25 21:28:32 +0200
+
+    update documentation to mention confirmation stuff
+    
+    Thanks: Christian Amsüss <chrysn@fsfe.org> for requesting that feature
+
+commit fad26b644eef6883810203a1bd143180484ff8fb
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-23 21:24:15 +0200
+
+    add quotes around ssh-agent-filter's name
+
+commit 8401112f358cd35ea72ddf2d67effbf3ac782a5e
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-23 21:20:29 +0200
+
+    rfc4251.h: add #include <stdexcept>
+
+commit 4bea277b6a2efd93321e5d6a0d96c87eb4d4e7c5
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-11 11:51:42 +0200
+
+    add confirmed key operations
+    
+    normal ssh authentications get dissected to allow the user a more
+    informed decision.
+
+commit 82f6ec6201c4fb64d0fc9ec43e9c003849ddc6ba
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-11 11:45:06 +0200
+
+    update bash-completion for confirmation options
+
+commit be10d6a2c1b646ce3cc67bab2896dd3720a80e64
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-09 20:18:07 +0200
+
+    improve inserting into (allow|confirm)ed_pubkeys
+
+commit cf11590789a66485623ed11508ae137e2b78a96d
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-09 18:15:57 +0200
+
+    add cmdline options for confirmation
+
+commit 48ae39cf004d22c0cf96703e382dec41304c3280
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-22 23:26:20 +0200
+
+    add confirmation via ssh-askpass
+
+commit 4b2644c5cf45bb0775e777667aa5a54b9cd6bef8
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-22 23:23:11 +0200
+
+    add CLOEXEC flag to sockets
+    
+    SOCK_CLOEXEC is currently only available on linux >= 2.6.27 so fcntl is used
+    as a fallback.
+
+commit 06df197ec118243a073923bb9f6803ffa426ea89
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-19 13:15:24 +0200
+
+    ssh-agent-filter.bash-completion: add missing license
+
+commit 59f0ba5eb0a1a4c9bcada66bfe3cf1780e268aff
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-18 16:43:22 +0200
+
+    add one missing exception activation
+
+commit 3707680021de040472cd792131a8df42902d08ba
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-18 16:40:21 +0200
+
+    also print out SSH_AUTH_SOCK in debug mode
+
+commit f6ae7a38cfec1d4f8abc6d5c13999682efcfca03
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-18 15:24:32 +0200
+
+    afssh.1.md: complete the sentence.
+
+commit ad2ee59254259fb117a16f3cc60c9a19b7c78ab9 (tag: 0.2)
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-09-08 17:20:11 +0200
+
+    release 0.2
+
 commit bd8e837efbc00eb49607ca493287d307ea47697b
 Author: Timo Weingärtner <timo@tiwe.de>
 Date:   2013-09-01 12:32:55 +0200
