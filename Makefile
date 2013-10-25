@@ -21,7 +21,7 @@ CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 CXXFLAGS += -std=c++11
 LDFLAGS += -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lnettle
 
-all: ssh-agent-filter.1 afssh.1
+all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
 
 %.1: %.1.md
 	pandoc -s -w man $< -o $@
