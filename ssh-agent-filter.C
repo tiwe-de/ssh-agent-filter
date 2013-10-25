@@ -37,9 +37,11 @@ namespace fs = boost::filesystem;
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <sysexits.h>
 #include <nettle/md5.h>
 #include <nettle/base64.h>
@@ -49,12 +51,21 @@ namespace fs = boost::filesystem;
 #include "ssh-agent.h"
 #include "version.h"
 
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
 
 std::vector<std::string> allowed_b64;
 std::vector<std::string> allowed_md5;
 std::vector<std::string> allowed_comment;
+std::vector<std::string> confirmed_b64;
+std::vector<std::string> confirmed_md5;
+std::vector<std::string> confirmed_comment;
 std::set<rfc4251string> allowed_pubkeys;
+std::map<rfc4251string, std::string> confirmed_pubkeys;
 bool debug{false};
+bool all_confirmed{false};
+std::string saf_name;
 fs::path path;
 
 
@@ -88,8 +99,12 @@ int make_upstream_agent_conn () {
 		exit(EX_UNAVAILABLE);
 	}
 
-	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
 		perror("socket");
+		exit(EX_UNAVAILABLE);
+	}
+	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
+		perror("fcntl");
 		exit(EX_UNAVAILABLE);
 	}
 	
@@ -114,8 +129,12 @@ int make_listen_sock () {
 	int sock;
 	struct sockaddr_un addr;
 	
-	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
 		perror("socket");
+		exit(EX_UNAVAILABLE);
+	}
+	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
+		perror("fcntl");
 		exit(EX_UNAVAILABLE);
 	}
 
@@ -144,12 +163,17 @@ int make_listen_sock () {
 void parse_cmdline (int const argc, char const * const * const argv) {
 	po::options_description opts{"OPTIONS"};
 	opts.add_options()
-		("comment,c",		po::value(&allowed_comment),	"key specified by comment")
-		("debug,d",		po::bool_switch(&debug),	"show some debug info, don't fork")
-		("fingerprint,fp,f",	po::value(&allowed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint")
-		("help,h",		"print this help message")
-		("key,k",		po::value(&allowed_b64),	"key specified by base64-encoded pubkey")
-		("version,V",		"print version information")
+		("all-confirmed,A",		po::bool_switch(&all_confirmed),"allow all other keys with confirmation")
+		("comment,c",			po::value(&allowed_comment),	"key specified by comment")
+		("comment-confirmed,C",		po::value(&confirmed_comment),	"key specified by comment, with confirmation")
+		("debug,d",			po::bool_switch(&debug),	"show some debug info, don't fork")
+		("fingerprint,fp,f",		po::value(&allowed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint")
+		("fingerprint-confirmed,F",	po::value(&confirmed_md5),	"key specified by pubkey's hex-encoded md5 fingerprint, with confirmation")
+		("help,h",			"print this help message")
+		("key,k",			po::value(&allowed_b64),	"key specified by base64-encoded pubkey")
+		("key-confirmed,K",		po::value(&confirmed_b64),	"key specified by base64-encoded pubkey, with confirmation")
+		("name,n",			po::value(&saf_name),		"name for this instance of ssh-agent-filter, for confirmation puposes")
+		("version,V",			"print version information")
 		;
 	po::variables_map config;
 	store(parse_command_line(argc, argv, opts), config);
@@ -206,21 +230,89 @@ void setup_filters () {
 		std::string comm(comment);
 		if (debug) std::clog << comm << std::endl;
 		
+		bool allow{false};
+
 		if (std::count(allowed_b64.begin(), allowed_b64.end(), b64)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by equal base64 representation" << std::endl;
 		}
 		if (std::count(allowed_md5.begin(), allowed_md5.end(), md5)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by matching md5 fingerprint" << std::endl;
 		}
 		if (std::count(allowed_comment.begin(), allowed_comment.end(), comm)) {
-			allowed_pubkeys.insert(key);
+			allow = true;
 			if (debug) std::clog << "key allowed by matching comment" << std::endl;
 		}
 		
+		if (allow) allowed_pubkeys.emplace(std::move(key));
+		else {
+			bool confirm{false};
+			
+			if (std::count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by equal base64 representation" << std::endl;
+			}
+			if (std::count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by matching md5 fingerprint" << std::endl;
+			}
+			if (std::count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by matching comment" << std::endl;
+			}
+			if (all_confirmed) {
+				confirm = true;
+				if (debug) std::clog << "key allowed with confirmation by catch-all (-A)" << std::endl;
+			}
+			
+			if (confirm) confirmed_pubkeys.emplace(std::move(key), std::move(comm));
+		}
+
 		if (debug) std::clog << std::endl;
 	}
+}
+
+bool confirm (std::string const & question) {
+	char const * sap;
+	if (!(sap = getenv("SSH_ASKPASS")))
+		sap = "ssh-askpass";
+	pid_t pid = fork();
+	if (pid < 0)
+		throw std::runtime_error("fork()");
+	if (pid == 0) {
+		// child
+		char const * args[3] = { sap, question.c_str(), nullptr };
+		// see execvp(3p) for cast rationale
+		execvp(sap, const_cast<char * const *>(args));
+		perror("exec");
+		exit(EX_UNAVAILABLE);
+	} else {
+		// parent
+		int status;
+		return waitpid(pid, &status, 0) > 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+	}
+}
+
+bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
+	std::istringstream datastream{data};
+	datastream.exceptions(std::ios::badbit | std::ios::failbit);
+
+	// Format specified in RFC 4252 Section 7
+	rfc4251string session_identifier; datastream >> session_identifier;
+	rfc4251byte requesttype; datastream >> requesttype;
+	rfc4251string username; datastream >> username;
+	rfc4251string servicename; datastream >> servicename;
+	rfc4251string publickeystring; datastream >> publickeystring;
+	rfc4251bool shouldbetrue; datastream >> shouldbetrue;
+	rfc4251string publickeyalgorithm; datastream >> publickeyalgorithm;
+	rfc4251string publickey; datastream >> publickey;
+
+	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
+
+	return true;
+} catch (...) {
+	return false;
 }
 
 rfc4251string handle_request (rfc4251string const & r) {
@@ -242,6 +334,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 				// temp to test key filtering when signing
 				//return agent_answer;
 				std::istringstream agent_answer_iss{agent_answer};
+				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
 				rfc4251byte answer_code;
 				rfc4251uint32 keycount;
 				agent_answer_iss >> answer_code >> keycount;
@@ -252,7 +345,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 					rfc4251string key;
 					rfc4251string comment;
 					agent_answer_iss >> key >> comment;
-					if (allowed_pubkeys.count(key))
+					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
 						keys.emplace_back(std::move(key), std::move(comment));
 				}
 				answer << answer_code << rfc4251uint32{static_cast<uint32_t>(keys.size())};
@@ -263,8 +356,33 @@ rfc4251string handle_request (rfc4251string const & r) {
 		case SSH2_AGENTC_SIGN_REQUEST:
 			{
 				rfc4251string key;
-				request >> key;
-				if (allowed_pubkeys.count(key)) {
+				rfc4251string data;
+				rfc4251uint32 flags;
+				request >> key >> data >> flags;
+				bool allow{false};
+				
+				if (allowed_pubkeys.count(key))
+					allow = true;
+				else {
+					auto it = confirmed_pubkeys.find(key);
+					if (it != confirmed_pubkeys.end()) {
+						std::string request_description;
+						bool dissect_ok{false};
+						if (!dissect_ok)
+							dissect_ok = dissect_auth_data_ssh(data, request_description);
+						if (!dissect_ok)
+							request_description = "The request format is unknown.";
+						
+						std::string question = "Something behind the ssh-agent-filter";
+						if (saf_name.length())
+							question += " named '" + saf_name + "'";
+						question += " requested use of the key named '" + it->second + "'.\n";
+						question += request_description;
+						allow = confirm(question);
+					}
+				}
+				
+				if (allow) {
 					__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
 					std::iostream agent{&agent_filebuf};
 					agent.exceptions(std::ios::badbit | std::ios::failbit);
@@ -362,6 +480,9 @@ int main (int const argc, char const * const * const argv) {
 		dup2(devnull, 1);
 		dup2(devnull, 2);
 		close(devnull);
+	} else {
+		std::cout << "copy this to another terminal:" << std::endl;
+		std::cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << std::endl;
 	}
 	
 	signal(SIGINT, sighandler);

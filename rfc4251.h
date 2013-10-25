@@ -32,6 +32,7 @@
 #include <string>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 #include <arpa/inet.h>	// ntohl() / htonl()
 #include <gmpxx.h>
 

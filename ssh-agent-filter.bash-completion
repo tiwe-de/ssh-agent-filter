@@ -1,31 +1,53 @@
+# bash completion for ssh-agent-filter and afssh
+#
+# Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+#
+# This file is part of ssh-agent-filter.
+#
+# ssh-agent-filter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ssh-agent-filter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ssh-agent-filter.  If not, see <http://www.gnu.org/licenses/>.
+
 _ssh-agent-filter () {
 	local cur prev words cword opts
 	_init_completion -n : || return
 
 	_quote_readline_by_ref "$cur" cur
 	
-	opts="--comment --debug --fingerprint --help --key --version"
+	opts="--all-confirmed --comment --comment-confirmed --debug --fingerprint --fingerprint-confirmed --help --key --key-confirmed --name --version"
 	
 	case "$prev" in
-		-c|--comment)
+		-c|--comment|-C|--comment-confirmed)
 			# hm, key comments might contain anything, how can I quote them ?
 			local comments="$(ssh-add -L | cut -d\  -f3- )"
 			COMPREPLY=( $(compgen -W "$comments" -- "$cur") )
 			return 0
 			;;
-		-f|--fp|--fingerprint)
+		-f|--fp|--fingerprint|-F|--fingerprint-confirmed)
 			# fingerprints contain many colons
 			local fingerprints="$(ssh-add -l | cut -d\  -f2 )"
 			COMPREPLY=( $(compgen -W "$fingerprints" -- "$cur") )
 			__ltrim_colon_completions "$cur"
 			return 0
 			;;
-		-k|--key)
+		-k|--key|-K|--key-confirmed)
 			# this is base64, no quoting needed
 			local keys="$(ssh-add -L | cut -d\  -f2 )"
 			COMPREPLY=( $(compgen -W "$keys" -- "$cur") )
 			return 0
 			;;
+		-n|--name)
+			COMPREPLY=( $(compgen -W "" -- "$cur") )
+			return 0
 	esac
 	
 	COMPREPLY=( $(compgen -W "$opts" -- "$cur") )

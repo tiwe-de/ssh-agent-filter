@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec zenity --question --title "SSH Request" --no-markup --text "$1" --ok-label Allow --cancel-label Deny
