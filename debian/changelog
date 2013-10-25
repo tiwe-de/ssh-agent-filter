@@ -1,3 +1,13 @@
+ssh-agent-filter (0.3-1) unstable; urgency=low
+
+  * New upstream release.
+    - Install new files: ssh-askpass-noinput(.1)
+    - Add Recommends: ssh-askpass, zenity
+    - Update copyright for new contributor.
+  * Allow parallel building.
+
+ -- Timo Weingärtner <timo@tiwe.de>  Sat, 26 Oct 2013 01:51:31 +0200
+
 ssh-agent-filter (0.2-1) unstable; urgency=low
 
   * Initial release (Closes: #722950)
