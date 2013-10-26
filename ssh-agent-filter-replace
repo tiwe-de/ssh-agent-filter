@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
+	SAF=$(readlink -f "${BASH_SOURCE%/*}/ssh-agent-filter")
+else
+	SAF=$(which ssh-agent-filter)
+fi
+
+ORIG_AUTH_SOCK="${SSH_AUTH_SOCK}"
+SOCK_RENAMED="${SSH_AUTH_SOCK}.original"
+
+mv -n "${SSH_AUTH_SOCK}" "${SOCK_RENAMED}"
+export SSH_AUTH_SOCK="${SOCK_RENAMED}"
+eval $("${SAF}" "$@")
+ln -s "${SSH_AUTH_SOCK}" "${ORIG_AUTH_SOCK}"

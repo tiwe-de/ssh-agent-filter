@@ -22,7 +22,7 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
 LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
 
-all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
+all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1 ssh-agent-filter-replace.1
 
 %.1: %.1.md
 	pandoc -s -w man $< -o $@
