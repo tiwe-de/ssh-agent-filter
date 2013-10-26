@@ -46,3 +46,12 @@ and implemented for *ssh-askpass* to be used more flexibly.
 # SEE ALSO
 
 ssh-agent-filter(1), ssh-agent(1), ssh-askpass(1)
+
+# AUTHORS
+
+ssh-askpass-noinput was conceived by chrysn <chrysn@fsfe.org>.
+
+Both the program and this man page are free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
