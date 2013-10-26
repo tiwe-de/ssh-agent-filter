@@ -1,17 +1,130 @@
 #!/bin/bash
 
+# ssh-agent-filter-replace -- filter all requests to the currently configured ssh-agent
+#
+# Copyright (C) 2013 chrysn <chrysn@fsfe.org>
+#
+# This file is part of ssh-agent-filter.
+#
+# ssh-agent-filter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ssh-agent-filter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ssh-agent-filter.  If not, see <http://www.gnu.org/licenses/>.
+
+
+## About the 'replacing a live ssh-agent socket' protocol
+#
+# The discipline described here should work for any kind of socket that is
+# expected by programs to be in a particular location, be it known by
+# environment variable or static configuration, and that should receive some
+# kind of filtering (or logging or whatever). It will not guarantee that the
+# socket is available while being modified, and programs modifying the socket
+# must not run concurrently, but it will allow programs to replace their own
+# filters without changing the sequences of filters. (In fact, the sequence
+# will stay as originally configured even if single filters are removed in the
+# meantime, unless the filters get completely deconfigured).
+#
+# A newly added filter must check if a filter of its kind (discriminated by use
+# of suffixes to the original socket) is already configured and active. If so,
+# it will replace it.
+#
+# When no traces of the filter are found, it must move the original socket away
+# to a location where it can use it (that socket will be its upstream socket),
+# and replace the socket with a symlink to a socket it provides itself.
+#
+# When the filter should be removed, it moves its upstream socket back to
+# replace the socket it provided. If it then determines that the original
+# socket is still a symlink pointing there, it may move the upstream socket
+# back to the original socket's location, removing all traces of itself. (If
+# other upstream filters later do that too, the sequence information of the
+# filters will be lost, and the filters can be completely deconfigured).
+#
+# If the original socket does not point to the socket the filter provides any
+# more, it has probably been moved away by another filter, which now uses the
+# symlink to the socket the filter provides, whose location can not be
+# determined. The filter can not completely deconfigure itself, and has to keep
+# its upstream socket at the location it provides. When the filter is re-added
+# later, it has to pick up that file as its new upstream socket, and will
+# install itself to its original position in the queue.
+
 set -e
 
+# this should be the only bash specific section here.
 if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
 	SAF=$(readlink -f "${BASH_SOURCE%/*}/ssh-agent-filter")
 else
 	SAF=$(which ssh-agent-filter)
 fi
 
-ORIG_AUTH_SOCK="${SSH_AUTH_SOCK}"
-SOCK_RENAMED="${SSH_AUTH_SOCK}.original"
+ORIG_SOCK="${SSH_AUTH_SOCK}"
+SOCK_UPSTREAM="${ORIG_SOCK}.before-ssh-agent-filter"
+SOCK_OURS="${ORIG_SOCK}.after-ssh-agent-filter"
+SOCK_OUR_PID="${ORIG_SOCK}.ssh-agent-filter.pid"
 
-mv -n "${SSH_AUTH_SOCK}" "${SOCK_RENAMED}"
-export SSH_AUTH_SOCK="${SOCK_RENAMED}"
+install() {
+	if [ -e "${SOCK_OURS}" ]
+	then
+		# we didn'nt uninstall completely, because someone was still
+		# using us as upstream. taking as upstream what we left to them
+		# back then.
+		mv "${SOCK_OURS}" "${SOCK_UPSTREAM}"
+	else
+		mv "${ORIG_SOCK}" "${SOCK_UPSTREAM}"
+		ln -s "${SOCK_OURS}" "${ORIG_SOCK}"
+	fi
+}
+
+uninstall() {
+	rm -f "${SOCK_OURS}"
+	mv "${SOCK_UPSTREAM}" "${SOCK_OURS}"
+	if [ x"$(readlink "${ORIG_SOCK}")" = x"${SOCK_OURS}" ]
+	then
+		rm "${ORIG_SOCK}"
+		mv "${SOCK_OURS}" "${ORIG_SOCK}"
+	fi
+}
+
+# we'll either replace or uninstall what is currently there
+if [ -e "${SOCK_OUR_PID}" ]
+then
+	kill $(cat "${SOCK_OUR_PID}")
+	rm "${SOCK_OUR_PID}"
+fi
+
+if [ $# -eq 1 -a "x$1" = "x-a" ]
+then
+	# the no-op ssh-agent-filter was invoked. instead of installing it,
+	# we'll remove any installed filter
+
+	[ -e "${SOCK_UPSTREAM}" ] && uninstall
+
+	exit 0
+fi
+
+[ -e "${SOCK_UPSTREAM}" ] || install
+
+# moving sockets probably only works on the same filesystem. changing into the
+# directory of where we'll move it makes sure that will work.
+cd $(dirname "${SOCK_OURS}")
+
+export SSH_AUTH_SOCK="${SOCK_UPSTREAM}"
 eval $("${SAF}" "$@")
-ln -s "${SSH_AUTH_SOCK}" "${ORIG_AUTH_SOCK}"
+
+if [ x"${SSH_AUTH_SOCK}" = x"${SOCK_UPSTREAM}" ]
+then
+	# eval didn't set an exit status; probably there was trouble
+	uninstall
+	echo "Errors occurred when ssh-agent-filter was invoked; no filter was installed." > /dev/stderr
+	exit 1
+fi
+
+echo "${SSH_AGENT_PID}" > "${SOCK_OUR_PID}"
+mv -f "${SSH_AUTH_SOCK}" "${SOCK_OURS}"
