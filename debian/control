@@ -12,7 +12,7 @@ Package: ssh-agent-filter
 Architecture: any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}, openssh-client
-Recommends: whiptail | dialog
+Recommends: whiptail | dialog, ssh-askpass, zenity
 Description: filtering proxy for ssh-agent
  This package solves the all-or-nothing problem regarding ssh-agent
  forwarding. It contains:
