@@ -1,3 +1,13 @@
+ssh-agent-filter (0.3-1~bpo70+1) wheezy-backports; urgency=low
+
+  * Rebuild for wheezy-backports.
+  * Explicitly use g++-4.7.
+  * Build-Depend on pandoc (<< 1.11.1-4) instead of pandoc-data,
+    add lintian-overrides for hyphen-used-as-minus-sign.
+  * Replace (map|set)::emplace with insert.
+
+ -- Timo Weingärtner <timo@tiwe.de>  Sun, 27 Oct 2013 16:05:16 +0100
+
 ssh-agent-filter (0.3-1) unstable; urgency=low
 
   * New upstream release.
