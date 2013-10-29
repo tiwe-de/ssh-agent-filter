@@ -306,7 +306,9 @@ void notify (std::string action, std::string description, std::string saf_name, 
 	pid_t pid = fork();
 	if (pid < 0)
 		throw std::runtime_error("fork()");
-	if (pid != 0) return; /* this is fire-and-forget */
+	if (pid != 0) { waitpid(pid, NULL, 0); return;} /* this is fire-and-forget */
+
+	if (fork()) _exit(0); /* now the parent can wait and cleanup gets done and children can die */
 
 	execlp(notifyhelper, notifyhelper, action.c_str(), description.c_str(), saf_name.c_str(), key_name.c_str());
 	perror("exec");
