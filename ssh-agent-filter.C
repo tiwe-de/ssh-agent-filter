@@ -297,6 +297,22 @@ bool confirm (std::string const & question) {
 	}
 }
 
+void notify (std::string action, std::string description, std::string saf_name, std::string key_name)
+{
+	char const * notifyhelper;
+	if (!(notifyhelper = getenv("SSH_AGENT_FILTER_NOTIFY_HELPER")))
+		notifyhelper = "/usr/lib/ssh-agent-filter/notifyhelper";
+
+	pid_t pid = fork();
+	if (pid < 0)
+		throw std::runtime_error("fork()");
+	if (pid != 0) return; /* this is fire-and-forget */
+
+	execlp(notifyhelper, notifyhelper, action.c_str(), description.c_str(), saf_name.c_str(), key_name.c_str());
+	perror("exec");
+	exit(EX_UNAVAILABLE);
+}
+
 bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
 	std::istringstream datastream{data};
 	datastream.exceptions(std::ios::badbit | std::ios::failbit);
@@ -363,13 +379,14 @@ rfc4251string handle_request (rfc4251string const & r) {
 				rfc4251uint32 flags;
 				request >> key >> data >> flags;
 				bool allow{false};
+
+				std::string request_description;
+				auto it = confirmed_pubkeys.find(key);
 				
 				if (allowed_pubkeys.count(key))
 					allow = true;
 				else {
-					auto it = confirmed_pubkeys.find(key);
 					if (it != confirmed_pubkeys.end()) {
-						std::string request_description;
 						bool dissect_ok{false};
 						if (!dissect_ok)
 							dissect_ok = dissect_auth_data_ssh(data, request_description);
@@ -393,6 +410,17 @@ rfc4251string handle_request (rfc4251string const & r) {
 					
 					agent << r;
 					agent >> agent_answer;
+
+					if (true) {
+						std::istringstream agent_answer_iss{agent_answer};
+						agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
+						rfc4251byte response;
+						agent_answer_iss >> response;
+
+						/** @todo shove around the question generation, and find key names even for unconfirmed keys. so far, only the declarations for it and request_description have been moved to scope. */
+						notify(response == SSH2_AGENT_SIGN_RESPONSE ? "agent-granted" : "agent-denied", request_description, saf_name, it != confirmed_pubkeys.end() ? it->second : "a key that's not in the confirm list");
+					}
+
 					return agent_answer;
 				} else
 					answer << rfc4251byte{SSH_AGENT_FAILURE};

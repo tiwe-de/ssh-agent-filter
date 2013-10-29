@@ -1,0 +1,17 @@
+#!/bin/bash
+
+action="$1"
+description="$2"
+saf_name="$3"
+key_name="$4"
+
+if [ x"$action" = x"agent-granted" ]
+then
+	icon=media-seek-forward
+	headline="SSH signature granted"
+else
+	icon=media-playback-stop
+	headline="SSH signature denied"
+fi
+
+notify-send -i "$icon" "$headline" "Filter: <i>${saf_name//</&lt;}</i>\nKey: <i>${key_name//</&lt;}</i>\n${description//</&lt;}"
