@@ -427,22 +427,17 @@ rfc4251string handle_request (rfc4251string const & r) {
 	return rfc4251string{answer.str()};
 }
 
-void handle_client (int const sock) {
-	// we could use only one streambuf and iostream but when
-	// switching from read to write an lseek call is made that
-	// fails with ESPIPE and causes an exception
-	io::stream_buffer<io::file_descriptor_source> client_filebuf_in{sock, io::close_handle};
-	io::stream_buffer<io::file_descriptor_sink> client_filebuf_out{sock, io::never_close_handle};
-	std::istream client_in{&client_filebuf_in};
-	std::ostream client_out{&client_filebuf_out};
-	client_out.exceptions(std::ios::badbit | std::ios::failbit);
+void handle_client (int const sock) try {
+	io::stream_buffer<io::file_descriptor> client_filebuf{sock, io::close_handle};
+	std::iostream client{&client_filebuf};
+	client.exceptions(std::ios::badbit | std::ios::failbit);
 	
-	rfc4251string request;
-	while (client_in >> request) try {
-		client_out << handle_request(request) << std::flush;
-	} catch (...) {
-		break;
+	for (;;) {
+		rfc4251string request;
+		client >> request;
+		client << handle_request(request) << std::flush;
 	}
+} catch (...) {
 }
 
 void sighandler (int sig) {
