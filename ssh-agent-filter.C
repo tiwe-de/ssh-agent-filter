@@ -25,6 +25,10 @@ namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
+#include <boost/iostreams/stream_buffer.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
+namespace io = boost::iostreams;
+
 #include <string>
 #include <vector>
 #include <set>
@@ -32,7 +36,6 @@ namespace fs = boost::filesystem;
 #include <sstream>
 #include <stdexcept>
 #include <thread>
-#include <ext/stdio_filebuf.h>
 
 #include <csignal>
 #include <cstdlib>
@@ -201,7 +204,7 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 }
 
 void setup_filters () {
-	__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+	io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
 	std::iostream agent{&agent_filebuf};
 	agent.exceptions(std::ios::badbit | std::ios::failbit);
 	
@@ -325,7 +328,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
-				__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+				io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
 				std::iostream agent{&agent_filebuf};
 				agent.exceptions(std::ios::badbit | std::ios::failbit);
 				rfc4251string agent_answer;
@@ -383,7 +386,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 				}
 				
 				if (allow) {
-					__gnu_cxx::stdio_filebuf<char> agent_filebuf{make_upstream_agent_conn(), std::ios::in | std::ios::out};
+					io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
 					std::iostream agent{&agent_filebuf};
 					agent.exceptions(std::ios::badbit | std::ios::failbit);
 					rfc4251string agent_answer;
@@ -428,8 +431,8 @@ void handle_client (int const sock) {
 	// we could use only one streambuf and iostream but when
 	// switching from read to write an lseek call is made that
 	// fails with ESPIPE and causes an exception
-	__gnu_cxx::stdio_filebuf<char> client_filebuf_in{sock, std::ios::in};
-	__gnu_cxx::stdio_filebuf<char> client_filebuf_out{sock, std::ios::out};
+	io::stream_buffer<io::file_descriptor_source> client_filebuf_in{sock, io::close_handle};
+	io::stream_buffer<io::file_descriptor_sink> client_filebuf_out{sock, io::never_close_handle};
 	std::istream client_in{&client_filebuf_in};
 	std::ostream client_out{&client_filebuf_out};
 	client_out.exceptions(std::ios::badbit | std::ios::failbit);
