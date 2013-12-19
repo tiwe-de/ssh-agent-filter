@@ -1,3 +1,12 @@
+ssh-agent-filter (0.3.1-1) unstable; urgency=medium
+
+  * New upstream release.
+    - use LDLIBS instead of LDFLAGS (Closes: #729500)
+  * New Build-Depends: libboost-iostreams-dev
+  * Remove Build-Depends: pandoc-data
+
+ -- Timo Weingärtner <timo@tiwe.de>  Thu, 19 Dec 2013 16:17:24 +0100
+
 ssh-agent-filter (0.3-1) unstable; urgency=low
 
   * New upstream release.
