@@ -2,7 +2,7 @@ Source: ssh-agent-filter
 Section: net
 Priority: extra
 Maintainer: Timo Weingärtner <timo@tiwe.de>
-Build-Depends: debhelper (>= 9), nettle-dev, libgmp-dev, libboost-program-options-dev, libboost-filesystem-dev, bash-completion, help2man, pandoc, pandoc-data
+Build-Depends: debhelper (>= 9), nettle-dev, libgmp-dev, libboost-program-options-dev, libboost-filesystem-dev, libboost-iostreams-dev, bash-completion, help2man, pandoc, pandoc-data
 Standards-Version: 3.9.4
 Homepage: https://github.com/tiwe-de/ssh-agent-filter
 Vcs-Git: git://github.com/tiwe-de/ssh-agent-filter.git -b debian
