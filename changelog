@@ -1,3 +1,39 @@
+commit a8c1ef855655e7419e54317a8e782f3993d99f7d
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-11-13 23:42:46 +0100
+
+    use LDLIBS instead of LDFLAGS
+    
+    LDLIBS are put behind the prerequisites by make's built-in rules so linking
+    won't fail with --as-needed.
+
+commit a42c87e6a761a56ebc63cd7728fa2126b2e8805f
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-11-02 12:27:10 +0100
+
+    (re)unify client iostreams
+    
+    boost::iostreams does not do lseek()s without being asked
+    extend try-block around entire function
+
+commit b05034bc176b38b3b3f31c7a2e1e53b4c16f61e2
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-11-02 11:38:40 +0100
+
+    replace __gnu_cxx::stdio_filebuf with boost::iostreams
+
+commit d11b2c830b7c7676d9c275d038f6a9593af2a4b8
+Author: chrysn <chrysn@fsfe.org>
+Date:   2013-10-26 10:53:24 +0200
+
+    confirm the license statement about files i created
+
+commit bd2154e05c0ab15d8e25f997fb4e6ec61f7a4c1f (tag: 0.3)
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-10-26 01:18:11 +0200
+
+    release 0.3
+
 commit 5d55704009d1052db6f4039544aedb17ca8f541b
 Author: chrysn <chrysn@fsfe.org>
 Date:   2013-10-26 00:50:36 +0200
