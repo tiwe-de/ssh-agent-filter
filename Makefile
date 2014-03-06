@@ -18,6 +18,7 @@
 
 CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 
+CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
 LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
 
