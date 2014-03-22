@@ -302,14 +302,14 @@ bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_de
 	datastream.exceptions(std::ios::badbit | std::ios::failbit);
 
 	// Format specified in RFC 4252 Section 7
-	rfc4251string session_identifier; datastream >> session_identifier;
-	rfc4251byte requesttype; datastream >> requesttype;
-	rfc4251string username; datastream >> username;
-	rfc4251string servicename; datastream >> servicename;
-	rfc4251string publickeystring; datastream >> publickeystring;
-	rfc4251bool shouldbetrue; datastream >> shouldbetrue;
-	rfc4251string publickeyalgorithm; datastream >> publickeyalgorithm;
-	rfc4251string publickey; datastream >> publickey;
+	rfc4251string	session_identifier;	datastream >> session_identifier;
+	rfc4251byte	requesttype;		datastream >> requesttype;
+	rfc4251string	username;		datastream >> username;
+	rfc4251string	servicename;		datastream >> servicename;
+	rfc4251string	publickeystring;	datastream >> publickeystring;
+	rfc4251bool	shouldbetrue;		datastream >> shouldbetrue;
+	rfc4251string	publickeyalgorithm;	datastream >> publickeyalgorithm;
+	rfc4251string	publickey;		datastream >> publickey;
 
 	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
 
