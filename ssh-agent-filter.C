@@ -315,6 +315,44 @@ void notify (std::string action, std::string description, std::string saf_name, 
 	exit(EX_UNAVAILABLE);
 }
 
+// Return a plain text description of the request if it results from a
+// PAM_SSH_AGENT_AUTH_REQUESTv1 (as created by pam-ssh-agent-auth) or
+// accidentally looks like it.
+std::string dissect_auth_data_ssh_pam_ssh_agent_auth (rfc4251string const & session_identifier) try {
+	std::istringstream idstream{session_identifier};
+	idstream.exceptions(std::ios::badbit | std::ios::failbit);
+
+	rfc4251uint32 type; idstream >> type;
+	if (type != 101) return ""; // should be PAM_SSH_AGENT_AUTH_REQUESTv1
+	rfc4251string cookie, user, ruser, servicename, pwd, action, hostname;
+	rfc4251uint64 ts;
+	idstream >> cookie >> user >> ruser >> servicename >> pwd >> action >> hostname >> ts;
+
+	std::string singleuser;
+	if (std::string{user} == std::string{ruser}) singleuser = std::string{user};
+	else singleuser = std::string{user} + " (" + std::string{ruser} + ")";
+
+	// FIXME: this could need real escaping (reverse shell escaping?)
+	std::string actionstring = "";
+	std::istringstream actionstream{action};
+	actionstream.exceptions(std::ios::badbit | std::ios::failbit);
+	rfc4251uint32 argc;
+	rfc4251string argv;
+	actionstream >> argc;
+	for (unsigned int i = 0; i < argc; ++i) {
+		if (actionstring != "") actionstring += " ";
+		actionstream >> argv;
+		actionstring += std::string{argv};
+	}
+
+	// FIXME: ts is ignored, we could check that and warn if there are big differences.
+
+	return "User " + singleuser + " wants to use " + std::string{servicename} + " in " + std::string{pwd} + " to run " + actionstring + " on " + std::string{hostname} + ".\n";
+
+} catch (...) {
+	return "";
+}
+
 bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
 	std::istringstream datastream{data};
 	datastream.exceptions(std::ios::badbit | std::ios::failbit);
@@ -329,7 +367,12 @@ bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_de
 	rfc4251string publickeyalgorithm; datastream >> publickeyalgorithm;
 	rfc4251string publickey; datastream >> publickey;
 
-	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
+	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.\n";
+
+	std::string additional = dissect_auth_data_ssh_pam_ssh_agent_auth(session_identifier);
+
+	if (additional != "")
+		request_description += additional;
 
 	return true;
 } catch (...) {
