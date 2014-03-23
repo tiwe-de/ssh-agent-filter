@@ -35,6 +35,7 @@
 #include <stdexcept>
 #include <arpa/inet.h>	// ntohl() / htonl()
 #include <gmpxx.h>
+#include <boost/operators.hpp>
 
 struct rfc4251byte {
 	union {
@@ -136,7 +137,7 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251uint64 const & x) {
 }
 
 
-struct rfc4251string {
+struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	std::vector<char> value;
 	
 	rfc4251string () = default;
