@@ -45,6 +45,7 @@ struct rfc4251byte {
 
 	rfc4251byte () = default;
 	explicit rfc4251byte (uint8_t v) : value(v) {}
+	inline explicit rfc4251byte (std::istream &);
 
 	operator uint8_t () const { return value; }
 };
@@ -57,6 +58,9 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251byte const & x) {
 	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251byte::rfc4251byte (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251bool {
 	union {
@@ -66,6 +70,7 @@ struct rfc4251bool {
 
 	rfc4251bool () = default;
 	explicit rfc4251bool (uint8_t v) : value(v) {}
+	inline explicit rfc4251bool (std::istream &);
 
 	operator uint8_t () const { return value; }
 };
@@ -78,6 +83,9 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251bool const & x) {
 	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251bool::rfc4251bool (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251uint32 {
 	union {
@@ -87,6 +95,7 @@ struct rfc4251uint32 {
 
 	rfc4251uint32 () = default;
 	explicit rfc4251uint32 (uint32_t v) { value = htonl(v); }
+	inline explicit rfc4251uint32 (std::istream &);
 
 	operator uint32_t () const { return ntohl(value); }
 };
@@ -99,6 +108,9 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251uint32 const & x) {
 	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251uint32::rfc4251uint32 (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251uint64 {
 	union {
@@ -108,6 +120,7 @@ struct rfc4251uint64 {
 
 	rfc4251uint64 () = default;
 	inline explicit rfc4251uint64 (uint64_t v);
+	inline explicit rfc4251uint64 (std::istream &);
 
 	inline explicit operator uint64_t () const;
 };
@@ -136,6 +149,9 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251uint64 const & x) {
 	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251uint64::rfc4251uint64 (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	std::vector<char> value;
@@ -147,6 +163,7 @@ struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	explicit rfc4251string (std::vector<std::string> const &);
 	explicit rfc4251string (mpz_srcptr);
 	explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
+	inline explicit rfc4251string (std::istream &);
 
 	operator std::string () const { return {value.begin(), value.end()}; }
 	operator std::vector<std::string> () const;
@@ -211,6 +228,10 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251string const & s) {
 	if (os << rfc4251uint32{static_cast<uint32_t>(s.value.size())})
 		os.write(s.value.data(), s.value.size());
 	return os;
+}
+
+inline rfc4251string::rfc4251string (std::istream & is) {
+	is >> *this;
 }
 
 inline bool operator== (rfc4251string const & l, rfc4251string const & r) {

@@ -209,20 +209,15 @@ void setup_filters () {
 	agent.exceptions(std::ios::badbit | std::ios::failbit);
 	
 	agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-	rfc4251string answer;
-	agent >> answer;
-	std::istringstream answer_iss{answer};
+	std::istringstream answer_iss{rfc4251string{agent}};
 	answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
-	rfc4251byte resp_code;
-	answer_iss >> resp_code;
+	rfc4251byte resp_code{answer_iss};
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
 		throw std::runtime_error{"unexpected answer from ssh-agent"};
-	rfc4251uint32 keycount;
-	answer_iss >> keycount;
+	rfc4251uint32 keycount{answer_iss};
 	for (uint32_t i = keycount; i; --i) {
-		rfc4251string key;
-		rfc4251string comment;
-		answer_iss >> key >> comment;
+		rfc4251string key{answer_iss};
+		rfc4251string comment{answer_iss};
 		
 		auto b64 = base64_encode(key);
 		if (debug) std::clog << b64 << std::endl;
@@ -302,14 +297,14 @@ bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_de
 	datastream.exceptions(std::ios::badbit | std::ios::failbit);
 
 	// Format specified in RFC 4252 Section 7
-	rfc4251string	session_identifier;	datastream >> session_identifier;
-	rfc4251byte	requesttype;		datastream >> requesttype;
-	rfc4251string	username;		datastream >> username;
-	rfc4251string	servicename;		datastream >> servicename;
-	rfc4251string	publickeystring;	datastream >> publickeystring;
-	rfc4251bool	shouldbetrue;		datastream >> shouldbetrue;
-	rfc4251string	publickeyalgorithm;	datastream >> publickeyalgorithm;
-	rfc4251string	publickey;		datastream >> publickey;
+	rfc4251string	session_identifier{datastream};
+	rfc4251byte	requesttype{datastream};
+	rfc4251string	username{datastream};
+	rfc4251string	servicename{datastream};
+	rfc4251string	publickeystring{datastream};
+	rfc4251bool	shouldbetrue{datastream};
+	rfc4251string	publickeyalgorithm{datastream};
+	rfc4251string	publickey{datastream};
 
 	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
 
@@ -323,31 +318,26 @@ rfc4251string handle_request (rfc4251string const & r) {
 	std::ostringstream answer;
 	request.exceptions(std::ios::badbit | std::ios::failbit);
 	answer.exceptions(std::ios::badbit | std::ios::failbit);
-	rfc4251byte request_code;
-	request >> request_code;
+	rfc4251byte request_code{request};
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
 				io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
 				std::iostream agent{&agent_filebuf};
 				agent.exceptions(std::ios::badbit | std::ios::failbit);
-				rfc4251string agent_answer;
 				agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-				agent >> agent_answer;
 				// temp to test key filtering when signing
-				//return agent_answer;
-				std::istringstream agent_answer_iss{agent_answer};
+				//return rfc4251string{agent};
+				std::istringstream agent_answer_iss{rfc4251string{agent}};
 				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
-				rfc4251byte answer_code;
-				rfc4251uint32 keycount;
-				agent_answer_iss >> answer_code >> keycount;
+				rfc4251byte answer_code{agent_answer_iss};
+				rfc4251uint32 keycount{agent_answer_iss};
 				if (answer_code != SSH2_AGENT_IDENTITIES_ANSWER)
 					throw std::runtime_error{"unexpected answer from ssh-agent"};
 				std::vector<std::pair<rfc4251string, rfc4251string>> keys;
 				for (uint32_t i = keycount; i; --i) {
-					rfc4251string key;
-					rfc4251string comment;
-					agent_answer_iss >> key >> comment;
+					rfc4251string key{agent_answer_iss};
+					rfc4251string comment{agent_answer_iss};
 					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
 						keys.emplace_back(std::move(key), std::move(comment));
 				}
@@ -358,10 +348,9 @@ rfc4251string handle_request (rfc4251string const & r) {
 			break;
 		case SSH2_AGENTC_SIGN_REQUEST:
 			{
-				rfc4251string key;
-				rfc4251string data;
-				rfc4251uint32 flags;
-				request >> key >> data >> flags;
+				rfc4251string key{request};
+				rfc4251string data{request};
+				rfc4251uint32 flags{request};
 				bool allow{false};
 				
 				if (allowed_pubkeys.count(key))
@@ -392,8 +381,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 					rfc4251string agent_answer;
 					
 					agent << r;
-					agent >> agent_answer;
-					return agent_answer;
+					return rfc4251string{agent};
 				} else
 					answer << rfc4251byte{SSH_AGENT_FAILURE};
 			}
@@ -432,11 +420,8 @@ void handle_client (int const sock) try {
 	std::iostream client{&client_filebuf};
 	client.exceptions(std::ios::badbit | std::ios::failbit);
 	
-	for (;;) {
-		rfc4251string request;
-		client >> request;
-		client << handle_request(request) << std::flush;
-	}
+	for (;;)
+		client << handle_request(rfc4251string{client}) << std::flush;
 } catch (...) {
 }
 
