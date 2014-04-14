@@ -446,7 +446,7 @@ void sighandler (int sig) {
 			break;
 		default:
 			remove(path);
-			std::abort();
+			std::exit(0);
 	}
 }
 
