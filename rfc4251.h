@@ -54,7 +54,7 @@ inline std::istream & operator>> (std::istream & is, rfc4251byte & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251byte const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
 
@@ -75,7 +75,7 @@ inline std::istream & operator>> (std::istream & is, rfc4251bool & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251bool const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
 
@@ -96,7 +96,7 @@ inline std::istream & operator>> (std::istream & is, rfc4251uint32 & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251uint32 const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
 
@@ -133,7 +133,7 @@ inline std::istream & operator>> (std::istream & is, rfc4251uint64 & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251uint64 const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
 
