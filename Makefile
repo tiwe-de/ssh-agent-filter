@@ -33,7 +33,7 @@ ssh-agent-filter.1: ssh-agent-filter
 ssh-agent-filter: ssh-agent-filter.o
 
 ssh-agent-filter.o: ssh-agent-filter.C rfc4251.h ssh-agent.h version.h
-
+rfc4251.o: rfc4251.C rfc4251.h
 rfc4251_gmp.o: rfc4251_gmp.C rfc4251.h
 
 version.h:
