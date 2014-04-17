@@ -157,7 +157,6 @@ struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	std::vector<char> value;
 	
 	rfc4251string () = default;
-	inline explicit rfc4251string (char const *);
 	inline explicit rfc4251string (char const *, size_t);
 	explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
 	explicit rfc4251string (std::vector<std::string> const &);
@@ -169,11 +168,6 @@ struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	operator std::vector<std::string> () const;
 	operator mpz_class () const;
 };
-
-inline rfc4251string::rfc4251string (char const * s) {
-	auto len = ntohl(*reinterpret_cast<uint32_t const *>(s));
-	value.insert(value.begin(), s + 4, s + 4 + len);
-}
 
 inline rfc4251string::rfc4251string (char const * s, size_t l) {
 	if (l > std::numeric_limits<uint32_t>::max())
