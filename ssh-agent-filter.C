@@ -25,7 +25,7 @@ namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-#include <boost/iostreams/stream_buffer.hpp>
+#include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
 namespace io = boost::iostreams;
 
@@ -204,8 +204,7 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 }
 
 void setup_filters () {
-	io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-	std::iostream agent{&agent_filebuf};
+	io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 	agent.exceptions(std::ios::badbit | std::ios::failbit);
 	
 	agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
@@ -322,8 +321,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
-				io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-				std::iostream agent{&agent_filebuf};
+				io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 				agent.exceptions(std::ios::badbit | std::ios::failbit);
 				agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				// temp to test key filtering when signing
@@ -375,8 +373,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 				}
 				
 				if (allow) {
-					io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-					std::iostream agent{&agent_filebuf};
+					io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 					agent.exceptions(std::ios::badbit | std::ios::failbit);
 					rfc4251string agent_answer;
 					
@@ -416,8 +413,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 }
 
 void handle_client (int const sock) try {
-	io::stream_buffer<io::file_descriptor> client_filebuf{sock, io::close_handle};
-	std::iostream client{&client_filebuf};
+	io::stream<io::file_descriptor> client{sock, io::close_handle};
 	client.exceptions(std::ios::badbit | std::ios::failbit);
 	
 	for (;;)
