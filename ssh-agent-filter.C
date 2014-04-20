@@ -26,6 +26,8 @@ namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 #include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
 namespace io = boost::iostreams;
 
@@ -33,7 +35,6 @@ namespace io = boost::iostreams;
 #include <vector>
 #include <set>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <thread>
 
@@ -208,7 +209,8 @@ void setup_filters () {
 	agent.exceptions(std::ios::badbit | std::ios::failbit);
 	
 	agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-	std::istringstream answer_iss{rfc4251string{agent}};
+	rfc4251string answer{agent};
+	io::stream<io::array_source> answer_iss{answer.data(), answer.size()};
 	answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
 	rfc4251byte resp_code{answer_iss};
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
@@ -292,7 +294,7 @@ bool confirm (std::string const & question) {
 }
 
 bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
-	std::istringstream datastream{data};
+	io::stream<io::array_source> datastream{data.data(), data.size()};
 	datastream.exceptions(std::ios::badbit | std::ios::failbit);
 
 	// Format specified in RFC 4252 Section 7
@@ -313,8 +315,9 @@ bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_de
 }
 
 rfc4251string handle_request (rfc4251string const & r) {
-	std::istringstream request{r};
-	std::ostringstream answer;
+	io::stream<io::array_source> request{r.data(), r.size()};
+	rfc4251string ret;
+	io::stream<io::back_insert_device<std::vector<char>>> answer{ret.value};
 	request.exceptions(std::ios::badbit | std::ios::failbit);
 	answer.exceptions(std::ios::badbit | std::ios::failbit);
 	rfc4251byte request_code{request};
@@ -326,7 +329,8 @@ rfc4251string handle_request (rfc4251string const & r) {
 				agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				// temp to test key filtering when signing
 				//return rfc4251string{agent};
-				std::istringstream agent_answer_iss{rfc4251string{agent}};
+				rfc4251string agent_answer{agent};
+				io::stream<io::array_source> agent_answer_iss{agent_answer.data(), agent_answer.size()};
 				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
 				rfc4251byte answer_code{agent_answer_iss};
 				rfc4251uint32 keycount{agent_answer_iss};
@@ -409,7 +413,8 @@ rfc4251string handle_request (rfc4251string const & r) {
 			break;
 	}
 
-	return rfc4251string{answer.str()};
+	answer << std::flush;
+	return ret;
 }
 
 void handle_client (int const sock) try {

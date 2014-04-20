@@ -164,6 +164,10 @@ struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
 	inline explicit rfc4251string (std::istream &);
 
+	size_t size () const { return value.size(); }
+	char const * data () const { return value.data(); }
+	char * data () { return value.data(); }
+
 	operator std::string () const { return {value.begin(), value.end()}; }
 	operator std::vector<std::string> () const;
 	operator mpz_class () const;
