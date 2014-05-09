@@ -47,6 +47,8 @@ using std::flush;
 
 #include <stdexcept>
 using std::runtime_error;
+using std::length_error;
+using std::invalid_argument;
 
 #include <system_error>
 using std::system_error;
@@ -131,10 +133,8 @@ int make_upstream_agent_conn () {
 	int sock;
 	struct sockaddr_un addr;
 
-	if (!(path = getenv("SSH_AUTH_SOCK"))) {
-		clog << "no $SSH_AUTH_SOCK" << endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (!(path = getenv("SSH_AUTH_SOCK")))
+		throw invalid_argument("no $SSH_AUTH_SOCK");
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1)
 		throw system_error(errno, system_category(), "socket");
@@ -142,10 +142,8 @@ int make_upstream_agent_conn () {
 	
 	addr.sun_family = AF_UNIX;
 	
-	if (strlen(path) >= sizeof(addr.sun_path)) {
-		clog << "$SSH_AUTH_SOCK too long" << endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (strlen(path) >= sizeof(addr.sun_path))
+		throw length_error("$SSH_AUTH_SOCK too long");
 
 	strcpy(addr.sun_path, path);
 
@@ -165,10 +163,8 @@ int make_listen_sock () {
 
 	addr.sun_family = AF_UNIX;
 	
-	if (path.native().length() >= sizeof(addr.sun_path)) {
-		clog << "path for listen socket too long" << endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (path.native().length() >= sizeof(addr.sun_path))
+		throw length_error("path for listen socket too long");
 
 	strcpy(addr.sun_path, path.c_str());
 
