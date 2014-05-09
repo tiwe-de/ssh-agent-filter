@@ -112,6 +112,17 @@ string base64_encode (string const & s) {
 	return {reinterpret_cast<char const *>(b64), len};
 }
 
+void cloexec (int fd) {
+	if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)) {
+		perror("fcntl");
+		exit(EX_UNAVAILABLE);
+	}
+}
+
+void arm(std::ios & stream) {
+	stream.exceptions(stream.badbit | stream.failbit);
+}
+
 int make_upstream_agent_conn () {
 	char const * path;
 	int sock;
@@ -126,10 +137,7 @@ int make_upstream_agent_conn () {
 		perror("socket");
 		exit(EX_UNAVAILABLE);
 	}
-	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
-		perror("fcntl");
-		exit(EX_UNAVAILABLE);
-	}
+	cloexec(sock);
 	
 	addr.sun_family = AF_UNIX;
 	
@@ -156,10 +164,7 @@ int make_listen_sock () {
 		perror("socket");
 		exit(EX_UNAVAILABLE);
 	}
-	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
-		perror("fcntl");
-		exit(EX_UNAVAILABLE);
-	}
+	cloexec(sock);
 
 	addr.sun_family = AF_UNIX;
 	
@@ -225,12 +230,12 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 
 void setup_filters () {
 	io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
-	agent.exceptions(std::ios::badbit | std::ios::failbit);
+	arm(agent);
 	
 	agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 	rfc4251string answer{agent};
 	io::stream<io::array_source> answer_iss{answer.data(), answer.size()};
-	answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
+	arm(answer_iss);
 	rfc4251byte resp_code{answer_iss};
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
 		throw runtime_error{"unexpected answer from ssh-agent"};
@@ -314,7 +319,7 @@ bool confirm (string const & question) {
 
 bool dissect_auth_data_ssh (rfc4251string const & data, string & request_description) try {
 	io::stream<io::array_source> datastream{data.data(), data.size()};
-	datastream.exceptions(std::ios::badbit | std::ios::failbit);
+	arm(datastream);
 
 	// Format specified in RFC 4252 Section 7
 	rfc4251string	session_identifier{datastream};
@@ -337,20 +342,20 @@ rfc4251string handle_request (rfc4251string const & r) {
 	io::stream<io::array_source> request{r.data(), r.size()};
 	rfc4251string ret;
 	io::stream<io::back_insert_device<vector<char>>> answer{ret.value};
-	request.exceptions(std::ios::badbit | std::ios::failbit);
-	answer.exceptions(std::ios::badbit | std::ios::failbit);
+	arm(request);
+	arm(answer);
 	rfc4251byte request_code{request};
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
 				io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
-				agent.exceptions(std::ios::badbit | std::ios::failbit);
+				arm(agent);
 				agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				// temp to test key filtering when signing
 				//return rfc4251string{agent};
 				rfc4251string agent_answer{agent};
 				io::stream<io::array_source> agent_answer_iss{agent_answer.data(), agent_answer.size()};
-				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
+				arm(agent_answer_iss);
 				rfc4251byte answer_code{agent_answer_iss};
 				rfc4251uint32 keycount{agent_answer_iss};
 				if (answer_code != SSH2_AGENT_IDENTITIES_ANSWER)
@@ -397,7 +402,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 				
 				if (allow) {
 					io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
-					agent.exceptions(std::ios::badbit | std::ios::failbit);
+					arm(agent);
 					rfc4251string agent_answer;
 					
 					agent << r;
@@ -438,7 +443,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 
 void handle_client (int const sock) try {
 	io::stream<io::file_descriptor> client{sock, io::close_handle};
-	client.exceptions(std::ios::badbit | std::ios::failbit);
+	arm(client);
 	
 	for (;;)
 		client << handle_request(rfc4251string{client}) << flush;
