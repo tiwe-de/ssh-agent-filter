@@ -48,6 +48,10 @@ using std::flush;
 #include <stdexcept>
 using std::runtime_error;
 
+#include <system_error>
+using std::system_error;
+using std::system_category;
+
 #include <utility>
 using std::pair;
 using std::move;
@@ -57,6 +61,7 @@ using std::count;
 
 #include <thread>
 
+#include <cerrno>
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
@@ -113,10 +118,8 @@ string base64_encode (string const & s) {
 }
 
 void cloexec (int fd) {
-	if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)) {
-		perror("fcntl");
-		exit(EX_UNAVAILABLE);
-	}
+	if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC))
+		throw system_error(errno, system_category(), "fcntl");
 }
 
 void arm(std::ios & stream) {
@@ -133,10 +136,8 @@ int make_upstream_agent_conn () {
 		exit(EX_UNAVAILABLE);
 	}
 
-	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
-		perror("socket");
-		exit(EX_UNAVAILABLE);
-	}
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1)
+		throw system_error(errno, system_category(), "socket");
 	cloexec(sock);
 	
 	addr.sun_family = AF_UNIX;
@@ -148,10 +149,8 @@ int make_upstream_agent_conn () {
 
 	strcpy(addr.sun_path, path);
 
-	if (connect(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr))) {
-		perror("connect");
-		exit(EX_UNAVAILABLE);
-	}
+	if (connect(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr)))
+		throw system_error(errno, system_category(), "connect");
 
 	return sock;
 }
@@ -160,10 +159,8 @@ int make_listen_sock () {
 	int sock;
 	struct sockaddr_un addr;
 	
-	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
-		perror("socket");
-		exit(EX_UNAVAILABLE);
-	}
+	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1)
+		throw system_error(errno, system_category(), "socket");
 	cloexec(sock);
 
 	addr.sun_family = AF_UNIX;
@@ -175,15 +172,11 @@ int make_listen_sock () {
 
 	strcpy(addr.sun_path, path.c_str());
 
-	if (bind(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr))) {
-		perror("bind");
-		exit(EX_UNAVAILABLE);
-	}
+	if (bind(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr)))
+		throw system_error(errno, system_category(), "bind");
 	
-	if (listen(sock, 0)) {
-		perror("listen");
-		exit(EX_UNAVAILABLE);
-	}
+	if (listen(sock, 0))
+		throw system_error(errno, system_category(), "listen");
 
 	return sock;
 }
@@ -308,8 +301,7 @@ bool confirm (string const & question) {
 		char const * args[3] = { sap, question.c_str(), nullptr };
 		// see execvp(3p) for cast rationale
 		execvp(sap, const_cast<char * const *>(args));
-		perror("exec");
-		exit(EX_UNAVAILABLE);
+		throw system_error(errno, system_category(), "exec");
 	} else {
 		// parent
 		int status;
@@ -470,10 +462,8 @@ int main (int const argc, char const * const * const argv) {
 
 	if (not debug) {
 		pid_t pid = fork();
-		if (pid == -1) {
-			perror("fork");
-			exit(EX_OSERR);
-		}
+		if (pid == -1)
+			throw system_error(errno, system_category(), "fork");
 		if (pid > 0) {
 			cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << endl;
 			cout << "SSH_AGENT_PID='" << pid << "'; export SSH_AGENT_PID;" << endl;
