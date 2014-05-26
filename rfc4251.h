@@ -10,7 +10,7 @@
  * those structs contain the objects in their RFC 4251 representation,
  * conversions are provided via constructors and cast operators
  *
- * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013-2014 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
@@ -35,6 +35,7 @@
 #include <stdexcept>
 #include <arpa/inet.h>	// ntohl() / htonl()
 #include <gmpxx.h>
+#include <boost/operators.hpp>
 
 struct rfc4251byte {
 	union {
@@ -44,6 +45,7 @@ struct rfc4251byte {
 
 	rfc4251byte () = default;
 	explicit rfc4251byte (uint8_t v) : value(v) {}
+	inline explicit rfc4251byte (std::istream &);
 
 	operator uint8_t () const { return value; }
 };
@@ -53,9 +55,12 @@ inline std::istream & operator>> (std::istream & is, rfc4251byte & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251byte const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251byte::rfc4251byte (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251bool {
 	union {
@@ -65,6 +70,7 @@ struct rfc4251bool {
 
 	rfc4251bool () = default;
 	explicit rfc4251bool (uint8_t v) : value(v) {}
+	inline explicit rfc4251bool (std::istream &);
 
 	operator uint8_t () const { return value; }
 };
@@ -74,9 +80,12 @@ inline std::istream & operator>> (std::istream & is, rfc4251bool & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251bool const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251bool::rfc4251bool (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251uint32 {
 	union {
@@ -86,6 +95,7 @@ struct rfc4251uint32 {
 
 	rfc4251uint32 () = default;
 	explicit rfc4251uint32 (uint32_t v) { value = htonl(v); }
+	inline explicit rfc4251uint32 (std::istream &);
 
 	operator uint32_t () const { return ntohl(value); }
 };
@@ -95,9 +105,12 @@ inline std::istream & operator>> (std::istream & is, rfc4251uint32 & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251uint32 const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251uint32::rfc4251uint32 (std::istream & is) {
+	is >> *this;
+}
 
 struct rfc4251uint64 {
 	union {
@@ -107,6 +120,7 @@ struct rfc4251uint64 {
 
 	rfc4251uint64 () = default;
 	inline explicit rfc4251uint64 (uint64_t v);
+	inline explicit rfc4251uint64 (std::istream &);
 
 	inline explicit operator uint64_t () const;
 };
@@ -121,8 +135,8 @@ inline rfc4251uint64::rfc4251uint64 (uint64_t v) {
 inline rfc4251uint64::operator uint64_t () const {
 	uint64_t ret{0};
 	for (uint_fast8_t i{0}; i < 8; ++i) {
-		ret |= buf[i];
 		ret <<= 8;
+		ret |= static_cast<uint8_t>(buf[i]);
 	}
 	return ret;
 }
@@ -132,66 +146,37 @@ inline std::istream & operator>> (std::istream & is, rfc4251uint64 & x) {
 }
 
 inline std::ostream & operator<< (std::ostream & os, rfc4251uint64 const & x) {
-	return os.write(x.buf, sizeof(x.buf));;
+	return os.write(x.buf, sizeof(x.buf));
 }
 
+inline rfc4251uint64::rfc4251uint64 (std::istream & is) {
+	is >> *this;
+}
 
-struct rfc4251string {
+struct rfc4251string : boost::totally_ordered<rfc4251string> {
 	std::vector<char> value;
 	
 	rfc4251string () = default;
-	inline explicit rfc4251string (char const *);
 	inline explicit rfc4251string (char const *, size_t);
 	explicit rfc4251string (std::string const & s) : rfc4251string{s.data(), s.size()} {}
 	explicit rfc4251string (std::vector<std::string> const &);
 	explicit rfc4251string (mpz_srcptr);
 	explicit rfc4251string (mpz_class const & x) : rfc4251string{x.get_mpz_t()} {}
+	inline explicit rfc4251string (std::istream &);
+
+	size_t size () const { return value.size(); }
+	char const * data () const { return value.data(); }
+	char * data () { return value.data(); }
 
 	operator std::string () const { return {value.begin(), value.end()}; }
 	operator std::vector<std::string> () const;
 	operator mpz_class () const;
 };
 
-inline rfc4251string::rfc4251string (char const * s) {
-	auto len = ntohl(*reinterpret_cast<uint32_t const *>(s));
-	value.insert(value.begin(), s + 4, s + 4 + len);
-}
-
 inline rfc4251string::rfc4251string (char const * s, size_t l) {
 	if (l > std::numeric_limits<uint32_t>::max())
 		throw std::length_error{"32-bit limit for rfc4251string exceeded"};
 	value.insert(value.end(), s, s + l);
-}
-
-rfc4251string::rfc4251string (std::vector<std::string> const & v) {
-	for (auto it = v.begin(); it != v.end();) {
-		if (it->size() == 0)
-			throw std::length_error{"name of zero length"};
-		if (value.size() + it->size() > std::numeric_limits<uint32_t>::max())
-			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
-		value.insert(value.end(), it->data(), it->data() + it->size());
-		++it;
-		if (it == v.end())
-			break;
-		value.push_back(',');
-	}
-}
-
-rfc4251string::operator std::vector<std::string> () const {
-	std::vector<std::string> ret;
-	auto name_start = value.begin();
-	if (name_start != value.end())
-		for (auto it = name_start; ; ++it) {
-			if (it == value.end() or *it == ',') {
-				if (it == name_start)
-					throw std::length_error{"name of zero length"};
-				ret.emplace_back(name_start, it);
-				name_start = it + 1;
-			}
-			if (it == value.end())
-				break;
-		}
-	return ret;
 }
 
 inline std::istream & operator>> (std::istream & is, rfc4251string & s) {
@@ -210,6 +195,10 @@ inline std::ostream & operator<< (std::ostream & os, rfc4251string const & s) {
 	if (os << rfc4251uint32{static_cast<uint32_t>(s.value.size())})
 		os.write(s.value.data(), s.value.size());
 	return os;
+}
+
+inline rfc4251string::rfc4251string (std::istream & is) {
+	is >> *this;
 }
 
 inline bool operator== (rfc4251string const & l, rfc4251string const & r) {

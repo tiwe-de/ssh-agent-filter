@@ -18,6 +18,7 @@
 
 CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 
+CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
 LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
 
@@ -32,7 +33,7 @@ ssh-agent-filter.1: ssh-agent-filter
 ssh-agent-filter: ssh-agent-filter.o
 
 ssh-agent-filter.o: ssh-agent-filter.C rfc4251.h ssh-agent.h version.h
-
+rfc4251.o: rfc4251.C rfc4251.h
 rfc4251_gmp.o: rfc4251_gmp.C rfc4251.h
 
 version.h:

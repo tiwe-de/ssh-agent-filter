@@ -1,7 +1,7 @@
 /*
  * ssh-agent-filter.C -- filtering proxy for ssh-agent meant to be forwarded to untrusted servers
  *
- * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013-2014 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
@@ -25,24 +25,57 @@ namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-#include <boost/iostreams/stream_buffer.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/device/file_descriptor.hpp>
 namespace io = boost::iostreams;
 
 #include <string>
-#include <vector>
-#include <set>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
-#include <thread>
+using std::string;
 
+#include <vector>
+using std::vector;
+
+#include <set>
+#include <map>
+#include <iostream>
+using std::cout;
+using std::clog;
+using std::endl;
+using std::flush;
+
+#include <stdexcept>
+using std::runtime_error;
+using std::length_error;
+using std::invalid_argument;
+
+#include <system_error>
+using std::system_error;
+using std::system_category;
+
+#include <utility>
+using std::pair;
+using std::move;
+
+#include <algorithm>
+using std::count;
+
+#include <thread>
+#include <mutex>
+using std::mutex;
+using std::lock_guard;
+
+#include <chrono>
+
+#include <cerrno>
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <sysexits.h>
@@ -58,21 +91,22 @@ namespace io = boost::iostreams;
 #define SOCK_CLOEXEC 0
 #endif
 
-std::vector<std::string> allowed_b64;
-std::vector<std::string> allowed_md5;
-std::vector<std::string> allowed_comment;
-std::vector<std::string> confirmed_b64;
-std::vector<std::string> confirmed_md5;
-std::vector<std::string> confirmed_comment;
+vector<string> allowed_b64;
+vector<string> allowed_md5;
+vector<string> allowed_comment;
+vector<string> confirmed_b64;
+vector<string> confirmed_md5;
+vector<string> confirmed_comment;
 std::set<rfc4251string> allowed_pubkeys;
-std::map<rfc4251string, std::string> confirmed_pubkeys;
+std::map<rfc4251string, string> confirmed_pubkeys;
 bool debug{false};
 bool all_confirmed{false};
-std::string saf_name;
+string saf_name;
 fs::path path;
+mutex fd_fork_mutex;
 
 
-std::string md5_hex (std::string const & s) {
+string md5_hex (string const & s) {
 	struct md5_ctx ctx;
 	md5_init(&ctx);
 	md5_update(&ctx, s.size(), reinterpret_cast<uint8_t const *>(s.data()));
@@ -83,7 +117,7 @@ std::string md5_hex (std::string const & s) {
 	return {reinterpret_cast<char const *>(hex), sizeof(hex)};
 }
 
-std::string base64_encode (std::string const & s) {
+string base64_encode (string const & s) {
 	struct base64_encode_ctx ctx;
 	base64_encode_init(&ctx);
 	uint8_t b64[BASE64_ENCODE_LENGTH(s.size())];
@@ -92,38 +126,39 @@ std::string base64_encode (std::string const & s) {
 	return {reinterpret_cast<char const *>(b64), len};
 }
 
+void cloexec (int fd) {
+	if (fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC))
+		throw system_error(errno, system_category(), "fcntl");
+}
+
+void arm(std::ios & stream) {
+	stream.exceptions(stream.badbit | stream.failbit);
+}
+
 int make_upstream_agent_conn () {
 	char const * path;
 	int sock;
 	struct sockaddr_un addr;
 
-	if (!(path = getenv("SSH_AUTH_SOCK"))) {
-		std::clog << "no $SSH_AUTH_SOCK" << std::endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (!(path = getenv("SSH_AUTH_SOCK")))
+		throw invalid_argument("no $SSH_AUTH_SOCK");
 
-	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
-		perror("socket");
-		exit(EX_UNAVAILABLE);
-	}
-	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
-		perror("fcntl");
-		exit(EX_UNAVAILABLE);
+	{
+		lock_guard<mutex> lock{fd_fork_mutex};
+		if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1)
+			throw system_error(errno, system_category(), "socket");
+		cloexec(sock);
 	}
 	
 	addr.sun_family = AF_UNIX;
 	
-	if (strlen(path) >= sizeof(addr.sun_path)) {
-		std::clog << "$SSH_AUTH_SOCK too long" << std::endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (strlen(path) >= sizeof(addr.sun_path))
+		throw length_error("$SSH_AUTH_SOCK too long");
 
 	strcpy(addr.sun_path, path);
 
-	if (connect(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr))) {
-		perror("connect");
-		exit(EX_UNAVAILABLE);
-	}
+	if (connect(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr)))
+		throw system_error(errno, system_category(), "connect");
 
 	return sock;
 }
@@ -132,33 +167,28 @@ int make_listen_sock () {
 	int sock;
 	struct sockaddr_un addr;
 	
-	if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
-		perror("socket");
-		exit(EX_UNAVAILABLE);
+	{
+		lock_guard<mutex> lock{fd_fork_mutex};
+		if ((sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1)
+			throw system_error(errno, system_category(), "socket");
+		cloexec(sock);
 	}
-	if (fcntl(sock, F_SETFD, fcntl(sock, F_GETFD) | FD_CLOEXEC)) {
-		perror("fcntl");
-		exit(EX_UNAVAILABLE);
-	}
+
+	if (fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) | O_NONBLOCK))
+		throw system_error(errno, system_category(), "fcntl");
 
 	addr.sun_family = AF_UNIX;
 	
-	if (path.native().length() >= sizeof(addr.sun_path)) {
-		std::clog << "path for listen socket too long" << std::endl;
-		exit(EX_UNAVAILABLE);
-	}
+	if (path.native().length() >= sizeof(addr.sun_path))
+		throw length_error("path for listen socket too long");
 
 	strcpy(addr.sun_path, path.c_str());
 
-	if (bind(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr))) {
-		perror("bind");
-		exit(EX_UNAVAILABLE);
-	}
+	if (bind(sock, reinterpret_cast<struct sockaddr const *>(&addr), sizeof(addr)))
+		throw system_error(errno, system_category(), "bind");
 	
-	if (listen(sock, 0)) {
-		perror("listen");
-		exit(EX_UNAVAILABLE);
-	}
+	if (listen(sock, 0))
+		throw system_error(errno, system_category(), "listen");
 
 	return sock;
 }
@@ -183,13 +213,13 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 	notify(config);
 	
 	if (config.count("help")) {
-		std::cout << "Invocation: ssh-agent-filter [ OPTIONS ]" << std::endl;
-		std::cout << opts << std::endl;
+		cout << "Invocation: ssh-agent-filter [ OPTIONS ]" << endl;
+		cout << opts << endl;
 		exit(EX_OK);
 	}
 	
 	if (config.count("version")) {
-		std::cout << SSH_AGENT_FILTER_VERSION << std::endl;
+		cout << SSH_AGENT_FILTER_VERSION << endl;
 		exit(EX_OK);
 	}
 
@@ -204,92 +234,90 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 }
 
 void setup_filters () {
-	io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-	std::iostream agent{&agent_filebuf};
-	agent.exceptions(std::ios::badbit | std::ios::failbit);
+	io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
+	arm(agent);
 	
-	agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-	rfc4251string answer;
-	agent >> answer;
-	std::istringstream answer_iss{answer};
-	answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
-	rfc4251byte resp_code;
-	answer_iss >> resp_code;
+	agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
+	rfc4251string answer{agent};
+	io::stream<io::array_source> answer_iss{answer.data(), answer.size()};
+	arm(answer_iss);
+	rfc4251byte resp_code{answer_iss};
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
-		throw std::runtime_error{"unexpected answer from ssh-agent"};
-	rfc4251uint32 keycount;
-	answer_iss >> keycount;
+		throw runtime_error{"unexpected answer from ssh-agent"};
+	rfc4251uint32 keycount{answer_iss};
 	for (uint32_t i = keycount; i; --i) {
-		rfc4251string key;
-		rfc4251string comment;
-		answer_iss >> key >> comment;
+		rfc4251string key{answer_iss};
+		rfc4251string comment{answer_iss};
 		
 		auto b64 = base64_encode(key);
-		if (debug) std::clog << b64 << std::endl;
+		if (debug) clog << b64 << endl;
 		
 		auto md5 = md5_hex(key);
-		if (debug) std::clog << md5 << std::endl;
+		if (debug) clog << md5 << endl;
 		
-		std::string comm(comment);
-		if (debug) std::clog << comm << std::endl;
+		string comm(comment);
+		if (debug) clog << comm << endl;
 		
 		bool allow{false};
 
-		if (std::count(allowed_b64.begin(), allowed_b64.end(), b64)) {
+		if (count(allowed_b64.begin(), allowed_b64.end(), b64)) {
 			allow = true;
-			if (debug) std::clog << "key allowed by equal base64 representation" << std::endl;
+			if (debug) clog << "key allowed by equal base64 representation" << endl;
 		}
-		if (std::count(allowed_md5.begin(), allowed_md5.end(), md5)) {
+		if (count(allowed_md5.begin(), allowed_md5.end(), md5)) {
 			allow = true;
-			if (debug) std::clog << "key allowed by matching md5 fingerprint" << std::endl;
+			if (debug) clog << "key allowed by matching md5 fingerprint" << endl;
 		}
-		if (std::count(allowed_comment.begin(), allowed_comment.end(), comm)) {
+		if (count(allowed_comment.begin(), allowed_comment.end(), comm)) {
 			allow = true;
-			if (debug) std::clog << "key allowed by matching comment" << std::endl;
+			if (debug) clog << "key allowed by matching comment" << endl;
 		}
 		
-		if (allow) allowed_pubkeys.emplace(std::move(key));
+		if (allow) allowed_pubkeys.emplace(move(key));
 		else {
 			bool confirm{false};
 			
-			if (std::count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
+			if (count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
 				confirm = true;
-				if (debug) std::clog << "key allowed with confirmation by equal base64 representation" << std::endl;
+				if (debug) clog << "key allowed with confirmation by equal base64 representation" << endl;
 			}
-			if (std::count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
+			if (count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
 				confirm = true;
-				if (debug) std::clog << "key allowed with confirmation by matching md5 fingerprint" << std::endl;
+				if (debug) clog << "key allowed with confirmation by matching md5 fingerprint" << endl;
 			}
-			if (std::count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
+			if (count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
 				confirm = true;
-				if (debug) std::clog << "key allowed with confirmation by matching comment" << std::endl;
+				if (debug) clog << "key allowed with confirmation by matching comment" << endl;
 			}
 			if (all_confirmed) {
 				confirm = true;
-				if (debug) std::clog << "key allowed with confirmation by catch-all (-A)" << std::endl;
+				if (debug) clog << "key allowed with confirmation by catch-all (-A)" << endl;
 			}
 			
-			if (confirm) confirmed_pubkeys.emplace(std::move(key), std::move(comm));
+			if (confirm) confirmed_pubkeys.emplace(move(key), move(comm));
 		}
 
-		if (debug) std::clog << std::endl;
+		if (debug) clog << endl;
 	}
 }
 
-bool confirm (std::string const & question) {
+bool confirm (string const & question) {
 	char const * sap;
 	if (!(sap = getenv("SSH_ASKPASS")))
 		sap = "ssh-askpass";
-	pid_t pid = fork();
+	pid_t pid;
+	{
+		lock_guard<mutex> lock{fd_fork_mutex};
+		pid = fork();
+	}
 	if (pid < 0)
-		throw std::runtime_error("fork()");
+		throw runtime_error("fork()");
 	if (pid == 0) {
 		// child
 		char const * args[3] = { sap, question.c_str(), nullptr };
 		// see execvp(3p) for cast rationale
 		execvp(sap, const_cast<char * const *>(args));
-		perror("exec");
-		exit(EX_UNAVAILABLE);
+		throw system_error(errno, system_category(), "exec");
 	} else {
 		// parent
 		int status;
@@ -297,59 +325,104 @@ bool confirm (std::string const & question) {
 	}
 }
 
-bool dissect_auth_data_ssh (rfc4251string const & data, std::string & request_description) try {
-	std::istringstream datastream{data};
-	datastream.exceptions(std::ios::badbit | std::ios::failbit);
+bool dissect_auth_data_ssh (rfc4251string const & data, string & request_description) try {
+	io::stream<io::array_source> datastream{data.data(), data.size()};
+	arm(datastream);
 
 	// Format specified in RFC 4252 Section 7
-	rfc4251string session_identifier; datastream >> session_identifier;
-	rfc4251byte requesttype; datastream >> requesttype;
-	rfc4251string username; datastream >> username;
-	rfc4251string servicename; datastream >> servicename;
-	rfc4251string publickeystring; datastream >> publickeystring;
-	rfc4251bool shouldbetrue; datastream >> shouldbetrue;
-	rfc4251string publickeyalgorithm; datastream >> publickeyalgorithm;
-	rfc4251string publickey; datastream >> publickey;
+	rfc4251string	session_identifier{datastream};
+	rfc4251byte	requesttype{datastream};
+	rfc4251string	username{datastream};
+	rfc4251string	servicename{datastream};
+	rfc4251string	publickeystring{datastream};
+	rfc4251bool	shouldbetrue{datastream};
+	rfc4251string	publickeyalgorithm{datastream};
+	rfc4251string	publickey{datastream};
 
-	request_description = "The request is for an ssh connection as user '" + std::string{username} + "' with service name '" + std::string{servicename} + "'.";
+	request_description = "The request is for an ssh connection as user '" + string{username} + "' with service name '" + string{servicename} + "'.";
 
+	if (string{servicename} == "pam_ssh_agent_auth") try {
+		clog << base64_encode(session_identifier) << endl;
+		io::stream<io::array_source> idstream{session_identifier.data(), session_identifier.size()};
+		arm(idstream);
+
+		rfc4251uint32	type{idstream};
+		if (type == 101) {
+			// PAM_SSH_AGENT_AUTH_REQUESTv1
+			rfc4251string	cookie{idstream};
+			rfc4251string	user{idstream};
+			rfc4251string	ruser{idstream};
+			rfc4251string	pam_service{idstream};
+			rfc4251string	pwd{idstream};
+			rfc4251string	action{idstream};
+			rfc4251string	hostname{idstream};
+			rfc4251uint64	timestamp{idstream};
+
+			string singleuser{user};
+			if (user != ruser)
+				singleuser += " (" + string{ruser} + ")";
+
+			string additional;
+			additional += "User '" + singleuser + "' wants to use '" + string{pam_service};
+			additional += "' in '" + string{pwd};
+			
+			io::stream<io::array_source> actionstream{action.data(), action.size()};
+			arm(actionstream);
+			
+			rfc4251uint32	argc{actionstream};
+			
+			if (argc) {
+				additional += " to run";
+				for (uint32_t i = argc; i; --i) {
+					rfc4251string	argv{actionstream};
+					additional += ' ' + string{argv};
+				}
+			}
+			
+			additional += " on " + string{hostname} + ".\n";
+			
+			auto now = std::chrono::system_clock::now();
+			auto req_time = std::chrono::system_clock::from_time_t(static_cast<uint64_t>(timestamp));
+			auto timediff = std::chrono::duration_cast<std::chrono::seconds>(now - req_time).count();
+			
+			additional += "The request was generated " + std::to_string(timediff) + " seconds ago.\n";
+			request_description = move(additional);
+		}
+	} catch (...) {}
+	
 	return true;
 } catch (...) {
 	return false;
 }
 
 rfc4251string handle_request (rfc4251string const & r) {
-	std::istringstream request{r};
-	std::ostringstream answer;
-	request.exceptions(std::ios::badbit | std::ios::failbit);
-	answer.exceptions(std::ios::badbit | std::ios::failbit);
-	rfc4251byte request_code;
-	request >> request_code;
+	io::stream<io::array_source> request{r.data(), r.size()};
+	rfc4251string ret;
+	io::stream<io::back_insert_device<vector<char>>> answer{ret.value};
+	arm(request);
+	arm(answer);
+	rfc4251byte request_code{request};
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
-				io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-				std::iostream agent{&agent_filebuf};
-				agent.exceptions(std::ios::badbit | std::ios::failbit);
-				rfc4251string agent_answer;
-				agent << rfc4251string{std::string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-				agent >> agent_answer;
+				io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
+				arm(agent);
+				agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				// temp to test key filtering when signing
-				//return agent_answer;
-				std::istringstream agent_answer_iss{agent_answer};
-				agent_answer_iss.exceptions(std::ios::badbit | std::ios::failbit);
-				rfc4251byte answer_code;
-				rfc4251uint32 keycount;
-				agent_answer_iss >> answer_code >> keycount;
+				//return rfc4251string{agent};
+				rfc4251string agent_answer{agent};
+				io::stream<io::array_source> agent_answer_iss{agent_answer.data(), agent_answer.size()};
+				arm(agent_answer_iss);
+				rfc4251byte answer_code{agent_answer_iss};
+				rfc4251uint32 keycount{agent_answer_iss};
 				if (answer_code != SSH2_AGENT_IDENTITIES_ANSWER)
-					throw std::runtime_error{"unexpected answer from ssh-agent"};
-				std::vector<std::pair<rfc4251string, rfc4251string>> keys;
+					throw runtime_error{"unexpected answer from ssh-agent"};
+				vector<pair<rfc4251string, rfc4251string>> keys;
 				for (uint32_t i = keycount; i; --i) {
-					rfc4251string key;
-					rfc4251string comment;
-					agent_answer_iss >> key >> comment;
+					rfc4251string key{agent_answer_iss};
+					rfc4251string comment{agent_answer_iss};
 					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
-						keys.emplace_back(std::move(key), std::move(comment));
+						keys.emplace_back(move(key), move(comment));
 				}
 				answer << answer_code << rfc4251uint32{static_cast<uint32_t>(keys.size())};
 				for (auto const & k : keys)
@@ -358,10 +431,9 @@ rfc4251string handle_request (rfc4251string const & r) {
 			break;
 		case SSH2_AGENTC_SIGN_REQUEST:
 			{
-				rfc4251string key;
-				rfc4251string data;
-				rfc4251uint32 flags;
-				request >> key >> data >> flags;
+				rfc4251string key{request};
+				rfc4251string data{request};
+				rfc4251uint32 flags{request};
 				bool allow{false};
 				
 				if (allowed_pubkeys.count(key))
@@ -369,14 +441,14 @@ rfc4251string handle_request (rfc4251string const & r) {
 				else {
 					auto it = confirmed_pubkeys.find(key);
 					if (it != confirmed_pubkeys.end()) {
-						std::string request_description;
+						string request_description;
 						bool dissect_ok{false};
 						if (!dissect_ok)
 							dissect_ok = dissect_auth_data_ssh(data, request_description);
 						if (!dissect_ok)
 							request_description = "The request format is unknown.";
 						
-						std::string question = "Something behind the ssh-agent-filter";
+						string question = "Something behind the ssh-agent-filter";
 						if (saf_name.length())
 							question += " named '" + saf_name + "'";
 						question += " requested use of the key named '" + it->second + "'.\n";
@@ -386,14 +458,12 @@ rfc4251string handle_request (rfc4251string const & r) {
 				}
 				
 				if (allow) {
-					io::stream_buffer<io::file_descriptor> agent_filebuf{make_upstream_agent_conn(), io::close_handle};
-					std::iostream agent{&agent_filebuf};
-					agent.exceptions(std::ios::badbit | std::ios::failbit);
+					io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
+					arm(agent);
 					rfc4251string agent_answer;
 					
 					agent << r;
-					agent >> agent_answer;
-					return agent_answer;
+					return rfc4251string{agent};
 				} else
 					answer << rfc4251byte{SSH_AGENT_FAILURE};
 			}
@@ -424,19 +494,16 @@ rfc4251string handle_request (rfc4251string const & r) {
 			break;
 	}
 
-	return rfc4251string{answer.str()};
+	answer << flush;
+	return ret;
 }
 
 void handle_client (int const sock) try {
-	io::stream_buffer<io::file_descriptor> client_filebuf{sock, io::close_handle};
-	std::iostream client{&client_filebuf};
-	client.exceptions(std::ios::badbit | std::ios::failbit);
+	io::stream<io::file_descriptor> client{sock, io::close_handle};
+	arm(client);
 	
-	for (;;) {
-		rfc4251string request;
-		client >> request;
-		client << handle_request(request) << std::flush;
-	}
+	for (;;)
+		client << handle_request(rfc4251string{client}) << flush;
 } catch (...) {
 }
 
@@ -446,7 +513,7 @@ void sighandler (int sig) {
 			break;
 		default:
 			remove(path);
-			std::abort();
+			std::exit(0);
 	}
 }
 
@@ -460,14 +527,12 @@ int main (int const argc, char const * const * const argv) {
 
 	if (not debug) {
 		pid_t pid = fork();
-		if (pid == -1) {
-			perror("fork");
-			exit(EX_OSERR);
-		}
+		if (pid == -1)
+			throw system_error(errno, system_category(), "fork");
 		if (pid > 0) {
-			std::cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << std::endl;
-			std::cout << "SSH_AGENT_PID='" << pid << "'; export SSH_AGENT_PID;" << std::endl;
-			std::cout << "echo 'Agent pid " << pid << "';" << std::endl;
+			cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << endl;
+			cout << "SSH_AGENT_PID='" << pid << "'; export SSH_AGENT_PID;" << endl;
+			cout << "echo 'Agent pid " << pid << "';" << endl;
 			exit(EX_OK);
 		}
 	
@@ -479,8 +544,8 @@ int main (int const argc, char const * const * const argv) {
 		dup2(devnull, 2);
 		close(devnull);
 	} else {
-		std::cout << "copy this to another terminal:" << std::endl;
-		std::cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << std::endl;
+		cout << "copy this to another terminal:" << endl;
+		cout << "SSH_AUTH_SOCK='" << path.native() << "'; export SSH_AUTH_SOCK;" << endl;
 	}
 	
 	signal(SIGINT, sighandler);
@@ -488,8 +553,22 @@ int main (int const argc, char const * const * const argv) {
 	signal(SIGHUP, sighandler);
 	signal(SIGTERM, sighandler);
 
-	int client_sock;
-	while ((client_sock = accept(listen_sock, nullptr, nullptr)) != -1) {
+	for (;;) {
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(listen_sock, &fds);
+		select(listen_sock + 1, &fds, nullptr, nullptr, nullptr);
+		int client_sock;
+		{
+			lock_guard<mutex> lock{fd_fork_mutex};
+			if ((client_sock = accept(listen_sock, nullptr, nullptr)) == -1) {
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+					continue;
+				else
+					break;
+			}
+			cloexec(client_sock);
+		}
 		std::thread t{handle_client, client_sock};
 		t.detach();
 	}

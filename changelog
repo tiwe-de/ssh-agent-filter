@@ -1,3 +1,128 @@
+commit 4318a9a998f78f1d6ee4d32facd0fc8e1e231179
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-26 23:36:33 +0200
+
+    add dissection of pam_ssh_agent_auth data
+
+commit 5cc6f72612187001f70255f6097437381cf49bba
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-26 20:41:08 +0200
+
+    rfc4251uint64: fix byte order conversion
+
+commit 023a56e7d7483531219280af2e17760168cfaf7e
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-12 21:39:42 +0200
+
+    use a mutex for fd creation and forks
+    
+    so we can have the CLOEXEC flag applied before a concurrent fork&exec.
+    use select() to avoid blocking while holding the mutex.
+
+commit 38a60755c7fa8e90b08273c6f2a0563ffc433f75
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-10 00:48:36 +0200
+
+    also replace custom fatal errors with exceptions
+
+commit 655b6084a5133d01a513c976b8b2567a71ba30c4
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-09 22:21:52 +0200
+
+    throw system_error instead of calling perror, exit
+
+commit 823dba2ac91f84a4ae75372c5636ad49d6cef1ba
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-09 21:42:10 +0200
+
+    factor out cloexec setting and stream exception arming
+
+commit b7d43361c44a214fa1b891fba7ea096650a6adca
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-07 21:34:53 +0200
+
+    add more #include's, add using's for often-used names
+
+commit a257a44837e78d283f1735b4685618c270aa54bc
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-20 23:35:04 +0200
+
+    use boost::iostreams instead of std::stringstreams
+    
+    boost::iostreams::array_source instead of istringstream
+    boost::iostreams::back_insert_device instead of ostringstream
+    
+    this should save at least one copy each and still has length checks (input)
+    or dynamic growth (output)
+
+commit a7f6e0c1d8553df678aa7b401eb374cf179210f7
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-18 13:55:30 +0200
+
+    use a boost stream directly
+    
+    instead of declaring an intermediate stream_buffer
+
+commit 185d1b9525cb132bc802cdecbc6901ed30d58555
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-17 21:30:27 +0200
+
+    rfc4251string: drop unused and dangerous constructor from just a pointer
+    
+    better use std::istringstream or boost::iostream::array_source
+
+commit ec5920ac2ed11b29135acb834ce6d633259aad75
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-15 20:09:21 +0200
+
+    rfc4251: move remaining non-inline functions to impl file
+
+commit afc8cbf6fad71317ee11b6e6374f8f3ce4816197
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-14 21:38:45 +0200
+
+    rfc4251*: add constructors from std::istream and use them
+
+commit ca4c9a28590919b6c0fc49cefdaf967758d5e4a0
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-14 21:10:11 +0200
+
+    do clean exit after receiving signal
+
+commit 26b246ac93d59a7f7ba29cff36ad1a3e61306a58
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-04-14 21:08:54 +0200
+
+    cosmetic: fix double semicolons
+
+commit 7d0f47c171b716b7e138157f8165ebf790227582
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-03-23 23:40:49 +0100
+
+    rfc4251string: add more operators
+    
+    this adds <= > >= !=
+
+commit f4343c2060ea70639dfc7c9a5eeb70f0b5ec5697
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-03-22 22:34:35 +0100
+
+    tab align auth_data_ssh dissection for readability
+
+commit ed9ca11a8dc24bed5f8e69e2a62169e7a484d8fb
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-03-06 21:22:57 +0100
+
+    enable large file support
+    
+    this should make some tests for LFS happy; we don't use sizes of or offsets in files here
+
+commit 477a0a0f1507413be7a5d2882aba28d01f7e6111 (tag: 0.3.1)
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2013-12-19 15:47:43 +0100
+
+    release 0.3.1
+
 commit a8c1ef855655e7419e54317a8e782f3993d99f7d
 Author: Timo Weingärtner <timo@tiwe.de>
 Date:   2013-11-13 23:42:46 +0100
