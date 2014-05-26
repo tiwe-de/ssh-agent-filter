@@ -4,7 +4,7 @@ Source: https://github.com/tiwe-de/ssh-agent-filter
 
 Files: *
 Copyright:
- 2013 Timo Weingärtner <timo@tiwe.de>
+ 2013-2014 Timo Weingärtner <timo@tiwe.de>
  2013 Christian Amsüss <chrysn@fsfe.org>
 License: GPL-3.0+
 
