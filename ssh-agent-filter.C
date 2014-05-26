@@ -66,6 +66,8 @@ using std::count;
 using std::mutex;
 using std::lock_guard;
 
+#include <chrono>
+
 #include <cerrno>
 #include <csignal>
 #include <cstdlib>
@@ -339,6 +341,55 @@ bool dissect_auth_data_ssh (rfc4251string const & data, string & request_descrip
 
 	request_description = "The request is for an ssh connection as user '" + string{username} + "' with service name '" + string{servicename} + "'.";
 
+	if (string{servicename} == "pam_ssh_agent_auth") try {
+		clog << base64_encode(session_identifier) << endl;
+		io::stream<io::array_source> idstream{session_identifier.data(), session_identifier.size()};
+		arm(idstream);
+
+		rfc4251uint32	type{idstream};
+		if (type == 101) {
+			// PAM_SSH_AGENT_AUTH_REQUESTv1
+			rfc4251string	cookie{idstream};
+			rfc4251string	user{idstream};
+			rfc4251string	ruser{idstream};
+			rfc4251string	pam_service{idstream};
+			rfc4251string	pwd{idstream};
+			rfc4251string	action{idstream};
+			rfc4251string	hostname{idstream};
+			rfc4251uint64	timestamp{idstream};
+
+			string singleuser{user};
+			if (user != ruser)
+				singleuser += " (" + string{ruser} + ")";
+
+			string additional;
+			additional += "User '" + singleuser + "' wants to use '" + string{pam_service};
+			additional += "' in '" + string{pwd};
+			
+			io::stream<io::array_source> actionstream{action.data(), action.size()};
+			arm(actionstream);
+			
+			rfc4251uint32	argc{actionstream};
+			
+			if (argc) {
+				additional += " to run";
+				for (uint32_t i = argc; i; --i) {
+					rfc4251string	argv{actionstream};
+					additional += ' ' + string{argv};
+				}
+			}
+			
+			additional += " on " + string{hostname} + ".\n";
+			
+			auto now = std::chrono::system_clock::now();
+			auto req_time = std::chrono::system_clock::from_time_t(static_cast<uint64_t>(timestamp));
+			auto timediff = std::chrono::duration_cast<std::chrono::seconds>(now - req_time).count();
+			
+			additional += "The request was generated " + std::to_string(timediff) + " seconds ago.\n";
+			request_description = move(additional);
+		}
+	} catch (...) {}
+	
 	return true;
 } catch (...) {
 	return false;
