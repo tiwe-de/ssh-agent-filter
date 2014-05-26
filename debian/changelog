@@ -1,3 +1,11 @@
+ssh-agent-filter (0.4-1) unstable; urgency=medium
+
+  * New upstream release.
+    + update copyright years
+  * Bump Standards-Version.
+
+ -- Timo Weingärtner <timo@tiwe.de>  Tue, 27 May 2014 00:21:18 +0200
+
 ssh-agent-filter (0.3.1-1) unstable; urgency=medium
 
   * New upstream release.
