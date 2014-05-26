@@ -10,7 +10,7 @@
  * those structs contain the objects in their RFC 4251 representation,
  * conversions are provided via constructors and cast operators
  *
- * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013-2014 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
