@@ -135,8 +135,8 @@ inline rfc4251uint64::rfc4251uint64 (uint64_t v) {
 inline rfc4251uint64::operator uint64_t () const {
 	uint64_t ret{0};
 	for (uint_fast8_t i{0}; i < 8; ++i) {
-		ret |= buf[i];
 		ret <<= 8;
+		ret |= static_cast<uint8_t>(buf[i]);
 	}
 	return ret;
 }
