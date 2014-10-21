@@ -1,3 +1,11 @@
+ssh-agent-filter (0.4-2) unstable; urgency=medium
+
+  * add debian/patches/0001-workaround-FTBFS-caused-by-doko:
+    link with -lpthread(Closes: #759859)
+  * Bump Standards-Version.
+
+ -- Timo Weingärtner <timo@tiwe.de>  Tue, 21 Oct 2014 17:26:33 +0200
+
 ssh-agent-filter (0.4-1) unstable; urgency=medium
 
   * New upstream release.
