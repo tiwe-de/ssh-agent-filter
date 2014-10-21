@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Timo Weingärtner <timo@tiwe.de>
 Build-Depends: debhelper (>= 9), nettle-dev, libgmp-dev, libboost-program-options-dev, libboost-filesystem-dev, libboost-iostreams-dev, bash-completion, help2man, pandoc
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Homepage: https://github.com/tiwe-de/ssh-agent-filter
 Vcs-Git: git://github.com/tiwe-de/ssh-agent-filter.git -b debian
 Vcs-Browser: https://github.com/tiwe-de/ssh-agent-filter/tree/debian
