@@ -1,0 +1,17 @@
+Description: workaround FTBFS caused by doko
+ Matthias Klose put an asm statement into libstdc++'s thread header forcing
+ applications to link with -lpthread
+Author: Timo_Weingärtner <timo@tiwe.de>
+Bug-Debian: https://bugs.debian.org/759859
+
+--- a/Makefile
++++ b/Makefile
+@@ -20,7 +20,7 @@ CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
+ 
+ CPPFLAGS += -D_FILE_OFFSET_BITS=64
+ CXXFLAGS += -std=c++11
+-LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
++LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle -lpthread
+ 
+ all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
+ 
