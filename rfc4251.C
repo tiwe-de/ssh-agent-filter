@@ -22,7 +22,7 @@
  * along with ssh-agent-filter.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rfc4251.h"
+#include "rfc4251.H"
 
 rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	for (auto it = v.begin(); it != v.end();) {

@@ -21,7 +21,7 @@
  * along with ssh-agent-filter.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rfc4251.h"
+#include "rfc4251.H"
 
 rfc4251string::rfc4251string (mpz_srcptr x) {
 	if (mpz_sgn(x) == 0)

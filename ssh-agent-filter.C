@@ -83,7 +83,7 @@ using std::lock_guard;
 #include <nettle/base64.h>
 #include <nettle/base16.h>
 
-#include "rfc4251.h"
+#include "rfc4251.H"
 #include "ssh-agent.h"
 #include "version.h"
 
