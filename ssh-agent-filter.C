@@ -56,10 +56,8 @@ using std::system_category;
 
 #include <utility>
 using std::pair;
-using std::move;
 
 #include <algorithm>
-using std::count;
 
 #include <thread>
 #include <mutex>
@@ -260,32 +258,32 @@ void setup_filters () {
 		
 		bool allow{false};
 
-		if (count(allowed_b64.begin(), allowed_b64.end(), b64)) {
+		if (std::count(allowed_b64.begin(), allowed_b64.end(), b64)) {
 			allow = true;
 			if (debug) clog << "key allowed by equal base64 representation" << endl;
 		}
-		if (count(allowed_md5.begin(), allowed_md5.end(), md5)) {
+		if (std::count(allowed_md5.begin(), allowed_md5.end(), md5)) {
 			allow = true;
 			if (debug) clog << "key allowed by matching md5 fingerprint" << endl;
 		}
-		if (count(allowed_comment.begin(), allowed_comment.end(), comm)) {
+		if (std::count(allowed_comment.begin(), allowed_comment.end(), comm)) {
 			allow = true;
 			if (debug) clog << "key allowed by matching comment" << endl;
 		}
 		
-		if (allow) allowed_pubkeys.emplace(move(key));
+		if (allow) allowed_pubkeys.emplace(std::move(key));
 		else {
 			bool confirm{false};
 			
-			if (count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
+			if (std::count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by equal base64 representation" << endl;
 			}
-			if (count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
+			if (std::count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by matching md5 fingerprint" << endl;
 			}
-			if (count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
+			if (std::count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by matching comment" << endl;
 			}
@@ -294,7 +292,7 @@ void setup_filters () {
 				if (debug) clog << "key allowed with confirmation by catch-all (-A)" << endl;
 			}
 			
-			if (confirm) confirmed_pubkeys.emplace(move(key), move(comm));
+			if (confirm) confirmed_pubkeys.emplace(std::move(key), std::move(comm));
 		}
 
 		if (debug) clog << endl;
@@ -422,7 +420,7 @@ rfc4251::string handle_request (rfc4251::string const & r) {
 					rfc4251::string key{agent_answer_iss};
 					rfc4251::string comment{agent_answer_iss};
 					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
-						keys.emplace_back(move(key), move(comment));
+						keys.emplace_back(std::move(key), std::move(comment));
 				}
 				answer << answer_code << rfc4251::uint32{static_cast<uint32_t>(keys.size())};
 				for (auto const & k : keys)
