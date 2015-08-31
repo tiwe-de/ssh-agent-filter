@@ -1,7 +1,7 @@
 /*
  * rfc4251.C -- support for name-list type from RFC 4251, section 5
  *
- * These are the conversions between an rfc4251string containing a name-list
+ * These are the conversions between an rfc4251::string containing a name-list
  * and vector<string>.
  *
  * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
@@ -24,12 +24,14 @@
 
 #include "rfc4251.H"
 
-rfc4251string::rfc4251string (std::vector<std::string> const & v) {
+namespace rfc4251 {
+
+string::string (std::vector<std::string> const & v) {
 	for (auto it = v.begin(); it != v.end();) {
 		if (it->size() == 0)
 			throw std::length_error{"name of zero length"};
 		if (value.size() + it->size() > std::numeric_limits<uint32_t>::max())
-			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
+			throw std::length_error{"32-bit limit for rfc4251::string exceeded"};
 		value.insert(value.end(), it->data(), it->data() + it->size());
 		++it;
 		if (it == v.end())
@@ -38,7 +40,7 @@ rfc4251string::rfc4251string (std::vector<std::string> const & v) {
 	}
 }
 
-rfc4251string::operator std::vector<std::string> () const {
+string::operator std::vector<std::string> () const {
 	std::vector<std::string> ret;
 	auto name_start = value.begin();
 	if (name_start != value.end())
@@ -53,4 +55,6 @@ rfc4251string::operator std::vector<std::string> () const {
 				break;
 		}
 	return ret;
+}
+
 }
