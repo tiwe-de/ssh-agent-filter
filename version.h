@@ -1,1 +1,1 @@
-#define SSH_AGENT_FILTER_VERSION "ssh-agent-filter 0.4"
+#define SSH_AGENT_FILTER_VERSION "ssh-agent-filter 0.4.1"

@@ -1,3 +1,57 @@
+commit 6bf9113ea96a99a5eb1b8f832497dd9e24857468
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-09-06 16:41:22 +0200
+
+    release 0.4.1
+
+commit d4584ca24834ca07f34c27c99ddf48c4c9156947
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-09-06 16:40:23 +0200
+
+    update copyright
+
+commit 33485a9d38ad40ee971695384cfc869ced281a8c
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-09-06 17:01:47 +0200
+
+    Makefile: link to pthread
+    
+    some versions of gcc reference a pthread function in the <thread> header
+
+commit ad1c2d2b28209654b447e1a5198c6516cfa50b88
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-08-31 23:36:29 +0200
+
+    call functions with namespace instead of using their names
+    
+    avoids problems with ADL
+    
+    Closes: #797235
+
+commit 8f675da301eafe79897f3ad67ff5450fcc397f78
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-08-31 20:22:37 +0200
+
+    move rfc4251 types into their own namespace
+
+commit 774ff2757de2a32c57046cbdc8425c6c22759035
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-08-28 19:12:58 +0200
+
+    rename C++ header to .H
+
+commit d9ffc789b1c7e781acbdd8310aef871dc3a41c13 (tag: 0.4)
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-26 23:47:02 +0200
+
+    release 0.4
+
+commit 57f385d44cdc4eec0d0d2de7ea04ade6f4154dbf
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2014-05-27 00:16:40 +0200
+
+    update copyright
+
 commit 4318a9a998f78f1d6ee4d32facd0fc8e1e231179
 Author: Timo Weingärtner <timo@tiwe.de>
 Date:   2014-05-26 23:36:33 +0200
