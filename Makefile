@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+# Copyright (C) 2013,2015 Timo Weingärtner <timo@tiwe.de>
 #
 # This file is part of ssh-agent-filter.
 #
@@ -20,7 +20,7 @@ CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
-LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
+LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle -lpthread
 
 all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
 
@@ -32,9 +32,9 @@ ssh-agent-filter.1: ssh-agent-filter
 
 ssh-agent-filter: ssh-agent-filter.o
 
-ssh-agent-filter.o: ssh-agent-filter.C rfc4251.h ssh-agent.h version.h
-rfc4251.o: rfc4251.C rfc4251.h
-rfc4251_gmp.o: rfc4251_gmp.C rfc4251.h
+ssh-agent-filter.o: ssh-agent-filter.C rfc4251.H ssh-agent.h version.h
+rfc4251.o: rfc4251.C rfc4251.H
+rfc4251_gmp.o: rfc4251_gmp.C rfc4251.H
 
 version.h:
 	test ! -d .git || git describe | sed 's/^.*$$/#define SSH_AGENT_FILTER_VERSION "ssh-agent-filter \0"/' > $@

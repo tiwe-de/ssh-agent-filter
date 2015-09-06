@@ -1,7 +1,7 @@
 /*
  * ssh-agent-filter.C -- filtering proxy for ssh-agent meant to be forwarded to untrusted servers
  *
- * Copyright (C) 2013-2014 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013-2015 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
@@ -56,10 +56,8 @@ using std::system_category;
 
 #include <utility>
 using std::pair;
-using std::move;
 
 #include <algorithm>
-using std::count;
 
 #include <thread>
 #include <mutex>
@@ -83,7 +81,7 @@ using std::lock_guard;
 #include <nettle/base64.h>
 #include <nettle/base16.h>
 
-#include "rfc4251.h"
+#include "rfc4251.H"
 #include "ssh-agent.h"
 #include "version.h"
 
@@ -97,8 +95,8 @@ vector<string> allowed_comment;
 vector<string> confirmed_b64;
 vector<string> confirmed_md5;
 vector<string> confirmed_comment;
-std::set<rfc4251string> allowed_pubkeys;
-std::map<rfc4251string, string> confirmed_pubkeys;
+std::set<rfc4251::string> allowed_pubkeys;
+std::map<rfc4251::string, string> confirmed_pubkeys;
 bool debug{false};
 bool all_confirmed{false};
 string saf_name;
@@ -237,17 +235,17 @@ void setup_filters () {
 	io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 	arm(agent);
 	
-	agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
-	rfc4251string answer{agent};
+	agent << rfc4251::string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
+	rfc4251::string answer{agent};
 	io::stream<io::array_source> answer_iss{answer.data(), answer.size()};
 	arm(answer_iss);
-	rfc4251byte resp_code{answer_iss};
+	rfc4251::byte resp_code{answer_iss};
 	if (resp_code != SSH2_AGENT_IDENTITIES_ANSWER)
 		throw runtime_error{"unexpected answer from ssh-agent"};
-	rfc4251uint32 keycount{answer_iss};
+	rfc4251::uint32 keycount{answer_iss};
 	for (uint32_t i = keycount; i; --i) {
-		rfc4251string key{answer_iss};
-		rfc4251string comment{answer_iss};
+		rfc4251::string key{answer_iss};
+		rfc4251::string comment{answer_iss};
 		
 		auto b64 = base64_encode(key);
 		if (debug) clog << b64 << endl;
@@ -260,32 +258,32 @@ void setup_filters () {
 		
 		bool allow{false};
 
-		if (count(allowed_b64.begin(), allowed_b64.end(), b64)) {
+		if (std::count(allowed_b64.begin(), allowed_b64.end(), b64)) {
 			allow = true;
 			if (debug) clog << "key allowed by equal base64 representation" << endl;
 		}
-		if (count(allowed_md5.begin(), allowed_md5.end(), md5)) {
+		if (std::count(allowed_md5.begin(), allowed_md5.end(), md5)) {
 			allow = true;
 			if (debug) clog << "key allowed by matching md5 fingerprint" << endl;
 		}
-		if (count(allowed_comment.begin(), allowed_comment.end(), comm)) {
+		if (std::count(allowed_comment.begin(), allowed_comment.end(), comm)) {
 			allow = true;
 			if (debug) clog << "key allowed by matching comment" << endl;
 		}
 		
-		if (allow) allowed_pubkeys.emplace(move(key));
+		if (allow) allowed_pubkeys.emplace(std::move(key));
 		else {
 			bool confirm{false};
 			
-			if (count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
+			if (std::count(confirmed_b64.begin(), confirmed_b64.end(), b64)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by equal base64 representation" << endl;
 			}
-			if (count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
+			if (std::count(confirmed_md5.begin(), confirmed_md5.end(), md5)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by matching md5 fingerprint" << endl;
 			}
-			if (count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
+			if (std::count(confirmed_comment.begin(), confirmed_comment.end(), comm)) {
 				confirm = true;
 				if (debug) clog << "key allowed with confirmation by matching comment" << endl;
 			}
@@ -294,7 +292,7 @@ void setup_filters () {
 				if (debug) clog << "key allowed with confirmation by catch-all (-A)" << endl;
 			}
 			
-			if (confirm) confirmed_pubkeys.emplace(move(key), move(comm));
+			if (confirm) confirmed_pubkeys.emplace(std::move(key), std::move(comm));
 		}
 
 		if (debug) clog << endl;
@@ -325,19 +323,19 @@ bool confirm (string const & question) {
 	}
 }
 
-bool dissect_auth_data_ssh (rfc4251string const & data, string & request_description) try {
+bool dissect_auth_data_ssh (rfc4251::string const & data, string & request_description) try {
 	io::stream<io::array_source> datastream{data.data(), data.size()};
 	arm(datastream);
 
 	// Format specified in RFC 4252 Section 7
-	rfc4251string	session_identifier{datastream};
-	rfc4251byte	requesttype{datastream};
-	rfc4251string	username{datastream};
-	rfc4251string	servicename{datastream};
-	rfc4251string	publickeystring{datastream};
-	rfc4251bool	shouldbetrue{datastream};
-	rfc4251string	publickeyalgorithm{datastream};
-	rfc4251string	publickey{datastream};
+	rfc4251::string		session_identifier{datastream};
+	rfc4251::byte		requesttype{datastream};
+	rfc4251::string		username{datastream};
+	rfc4251::string		servicename{datastream};
+	rfc4251::string		publickeystring{datastream};
+	rfc4251::boolean	shouldbetrue{datastream};
+	rfc4251::string		publickeyalgorithm{datastream};
+	rfc4251::string		publickey{datastream};
 
 	request_description = "The request is for an ssh connection as user '" + string{username} + "' with service name '" + string{servicename} + "'.";
 
@@ -346,17 +344,17 @@ bool dissect_auth_data_ssh (rfc4251string const & data, string & request_descrip
 		io::stream<io::array_source> idstream{session_identifier.data(), session_identifier.size()};
 		arm(idstream);
 
-		rfc4251uint32	type{idstream};
+		rfc4251::uint32	type{idstream};
 		if (type == 101) {
 			// PAM_SSH_AGENT_AUTH_REQUESTv1
-			rfc4251string	cookie{idstream};
-			rfc4251string	user{idstream};
-			rfc4251string	ruser{idstream};
-			rfc4251string	pam_service{idstream};
-			rfc4251string	pwd{idstream};
-			rfc4251string	action{idstream};
-			rfc4251string	hostname{idstream};
-			rfc4251uint64	timestamp{idstream};
+			rfc4251::string	cookie{idstream};
+			rfc4251::string	user{idstream};
+			rfc4251::string	ruser{idstream};
+			rfc4251::string	pam_service{idstream};
+			rfc4251::string	pwd{idstream};
+			rfc4251::string	action{idstream};
+			rfc4251::string	hostname{idstream};
+			rfc4251::uint64	timestamp{idstream};
 
 			string singleuser{user};
 			if (user != ruser)
@@ -369,12 +367,12 @@ bool dissect_auth_data_ssh (rfc4251string const & data, string & request_descrip
 			io::stream<io::array_source> actionstream{action.data(), action.size()};
 			arm(actionstream);
 			
-			rfc4251uint32	argc{actionstream};
+			rfc4251::uint32	argc{actionstream};
 			
 			if (argc) {
 				additional += " to run";
 				for (uint32_t i = argc; i; --i) {
-					rfc4251string	argv{actionstream};
+					rfc4251::string	argv{actionstream};
 					additional += ' ' + string{argv};
 				}
 			}
@@ -395,45 +393,45 @@ bool dissect_auth_data_ssh (rfc4251string const & data, string & request_descrip
 	return false;
 }
 
-rfc4251string handle_request (rfc4251string const & r) {
+rfc4251::string handle_request (rfc4251::string const & r) {
 	io::stream<io::array_source> request{r.data(), r.size()};
-	rfc4251string ret;
+	rfc4251::string ret;
 	io::stream<io::back_insert_device<vector<char>>> answer{ret.value};
 	arm(request);
 	arm(answer);
-	rfc4251byte request_code{request};
+	rfc4251::byte request_code{request};
 	switch (request_code) {
 		case SSH2_AGENTC_REQUEST_IDENTITIES:
 			{
 				io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 				arm(agent);
-				agent << rfc4251string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
+				agent << rfc4251::string{string{SSH2_AGENTC_REQUEST_IDENTITIES}};
 				// temp to test key filtering when signing
-				//return rfc4251string{agent};
-				rfc4251string agent_answer{agent};
+				//return rfc4251::string{agent};
+				rfc4251::string agent_answer{agent};
 				io::stream<io::array_source> agent_answer_iss{agent_answer.data(), agent_answer.size()};
 				arm(agent_answer_iss);
-				rfc4251byte answer_code{agent_answer_iss};
-				rfc4251uint32 keycount{agent_answer_iss};
+				rfc4251::byte answer_code{agent_answer_iss};
+				rfc4251::uint32 keycount{agent_answer_iss};
 				if (answer_code != SSH2_AGENT_IDENTITIES_ANSWER)
 					throw runtime_error{"unexpected answer from ssh-agent"};
-				vector<pair<rfc4251string, rfc4251string>> keys;
+				vector<pair<rfc4251::string, rfc4251::string>> keys;
 				for (uint32_t i = keycount; i; --i) {
-					rfc4251string key{agent_answer_iss};
-					rfc4251string comment{agent_answer_iss};
+					rfc4251::string key{agent_answer_iss};
+					rfc4251::string comment{agent_answer_iss};
 					if (allowed_pubkeys.count(key) or confirmed_pubkeys.count(key))
-						keys.emplace_back(move(key), move(comment));
+						keys.emplace_back(std::move(key), std::move(comment));
 				}
-				answer << answer_code << rfc4251uint32{static_cast<uint32_t>(keys.size())};
+				answer << answer_code << rfc4251::uint32{static_cast<uint32_t>(keys.size())};
 				for (auto const & k : keys)
 					answer << k.first << k.second;
 			}
 			break;
 		case SSH2_AGENTC_SIGN_REQUEST:
 			{
-				rfc4251string key{request};
-				rfc4251string data{request};
-				rfc4251uint32 flags{request};
+				rfc4251::string key{request};
+				rfc4251::string data{request};
+				rfc4251::uint32 flags{request};
 				bool allow{false};
 				
 				if (allowed_pubkeys.count(key))
@@ -460,21 +458,21 @@ rfc4251string handle_request (rfc4251string const & r) {
 				if (allow) {
 					io::stream<io::file_descriptor> agent{make_upstream_agent_conn(), io::close_handle};
 					arm(agent);
-					rfc4251string agent_answer;
+					rfc4251::string agent_answer;
 					
 					agent << r;
-					return rfc4251string{agent};
+					return rfc4251::string{agent};
 				} else
-					answer << rfc4251byte{SSH_AGENT_FAILURE};
+					answer << rfc4251::byte{SSH_AGENT_FAILURE};
 			}
 			break;
 		case SSH_AGENTC_REQUEST_RSA_IDENTITIES:
-			answer << rfc4251byte{SSH_AGENT_RSA_IDENTITIES_ANSWER};
+			answer << rfc4251::byte{SSH_AGENT_RSA_IDENTITIES_ANSWER};
 			// we got no SSHv1 keys
-			answer << rfc4251uint32{0};
+			answer << rfc4251::uint32{0};
 			break;
 		case SSH_AGENTC_REMOVE_ALL_RSA_IDENTITIES:
-			answer << rfc4251byte{SSH_AGENT_SUCCESS};
+			answer << rfc4251::byte{SSH_AGENT_SUCCESS};
 			break;
 		case SSH_AGENTC_RSA_CHALLENGE:
 		case SSH_AGENTC_ADD_RSA_IDENTITY:
@@ -490,7 +488,7 @@ rfc4251string handle_request (rfc4251string const & r) {
 		case SSH_AGENTC_UNLOCK:
 		case SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED:
 		default:
-			answer << rfc4251byte{SSH_AGENT_FAILURE};
+			answer << rfc4251::byte{SSH_AGENT_FAILURE};
 			break;
 	}
 
@@ -503,7 +501,7 @@ void handle_client (int const sock) try {
 	arm(client);
 	
 	for (;;)
-		client << handle_request(rfc4251string{client}) << flush;
+		client << handle_request(rfc4251::string{client}) << flush;
 } catch (...) {
 }
 

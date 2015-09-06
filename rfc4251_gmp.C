@@ -1,9 +1,9 @@
 /*
- * rfc4251_gmp.C -- implements mpint/gmp conversions for rfc4251string
+ * rfc4251_gmp.C -- implements mpint/gmp conversions for rfc4251::string
  *
  * these functions need linking against libgmp
  *
- * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013,2015 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
@@ -21,9 +21,11 @@
  * along with ssh-agent-filter.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rfc4251.h"
+#include "rfc4251.H"
 
-rfc4251string::rfc4251string (mpz_srcptr x) {
+namespace rfc4251 {
+
+string::string (mpz_srcptr x) {
 	if (mpz_sgn(x) == 0)
 		return;
 
@@ -32,7 +34,7 @@ rfc4251string::rfc4251string (mpz_srcptr x) {
 		size_t bytes{(bits + 7) / 8};
 		size_t extrabyte{(bits % 8) == 0}; // need extra byte if MSB is 1 to keep it non-negative
 		if (bytes + extrabyte > std::numeric_limits<uint32_t>::max())
-			throw std::length_error{"32-bit limit for rfc4251string exceeded"};
+			throw std::length_error{"32-bit limit for rfc4251::string exceeded"};
 		value.resize(bytes + extrabyte);
 		value[0] = 0;
 		mpz_export(value.data() + extrabyte, nullptr, 1, 1, 1, 0, x);
@@ -49,7 +51,7 @@ rfc4251string::rfc4251string (mpz_srcptr x) {
 	}
 }
 
-rfc4251string::operator mpz_class () const {
+string::operator mpz_class () const {
 	mpz_class ret;
 	mpz_import(ret.get_mpz_t(), value.size(), 1, 1, 1, 0, value.data());
 	if (mpz_sizeinbase(ret.get_mpz_t(), 2) == value.size() * 8) { // negative
@@ -58,4 +60,6 @@ rfc4251string::operator mpz_class () const {
 		mpz_neg(ret.get_mpz_t(), ret.get_mpz_t());
 	}
 	return ret;
+}
+
 }
