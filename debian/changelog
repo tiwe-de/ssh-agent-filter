@@ -1,3 +1,13 @@
+ssh-agent-filter (0.4.1-1) unstable; urgency=medium
+
+  * New upstream release:
+    - call functions with namespace instead of using their names
+      (Closes: #797235)
+    - drop debian/patches/
+  * install bash_completions manually, clean up conffile from prior versions
+
+ -- Timo Weingärtner <timo@tiwe.de>  Sun, 06 Sep 2015 21:40:05 +0200
+
 ssh-agent-filter (0.4-2) unstable; urgency=medium
 
   * add debian/patches/0001-workaround-FTBFS-caused-by-doko:
