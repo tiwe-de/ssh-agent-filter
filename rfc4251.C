@@ -4,7 +4,7 @@
  * These are the conversions between an rfc4251::string containing a name-list
  * and vector<string>.
  *
- * Copyright (C) 2013 Timo Weingärtner <timo@tiwe.de>
+ * Copyright (C) 2013,2015 Timo Weingärtner <timo@tiwe.de>
  *
  * This file is part of ssh-agent-filter.
  *
