@@ -20,7 +20,7 @@ CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
-LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle
+LDLIBS = -lstdc++ -lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lnettle -lpthread
 
 all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
 
