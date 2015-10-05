@@ -211,7 +211,7 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 	notify(config);
 	
 	if (config.count("help")) {
-		cout << "Invocation: ssh-agent-filter [ OPTIONS ]" << endl;
+		cout << "Usage: ssh-agent-filter [ OPTIONS ]" << endl;
 		cout << opts << endl;
 		exit(EX_OK);
 	}
