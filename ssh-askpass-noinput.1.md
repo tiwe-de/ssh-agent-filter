@@ -13,7 +13,7 @@ ssh-askpass-noinput - an `ssh-askpass` implementation for asking allow/deny ques
 # DESCRIPTION
 
 *ssh-askpass-noinput* is an implementation of *ssh-askpass*, which does not
-acutally ask for a password; instead, it only asks a binary (allow/deny)
+actually ask for a password; instead, it only asks a binary (allow/deny)
 question and exits with 0 for allow and 1 for deny.
 
 It is not intended as a general replacement for *ssh-askpass*, but for special
