@@ -497,6 +497,9 @@ rfc4251::string handle_request (rfc4251::string const & r) {
 }
 
 void handle_client (int const sock) try {
+	if (fcntl(sock, F_SETFL, fcntl(sock, F_GETFL) & ~O_NONBLOCK))
+		throw system_error(errno, system_category(), "fcntl");
+
 	io::stream<io::file_descriptor> client{sock, io::close_handle};
 	arm(client);
 	
