@@ -1,4 +1,4 @@
-# Copyright (C) 2013,2015 Timo Weingärtner <timo@tiwe.de>
+# Copyright (C) 2013-2016 Timo Weingärtner <timo@tiwe.de>
 #
 # This file is part of ssh-agent-filter.
 #
