@@ -1,3 +1,15 @@
+ssh-agent-filter (0.4.2-1) unstable; urgency=medium
+
+  * New upstream release:
+    + clear O_NONBLOCK on client sockets
+  * use debhelper for dpkg-maintscript-helper
+  * debian/rules: enable more hardening/reproducibility/qa build flags
+  * remove Build-Depends: bash-completion
+  * Standards-Version: 3.9.8
+  * replace git: with https: in Vcs-Git:
+
+ -- Timo Weingärtner <timo@tiwe.de>  Sat, 27 Aug 2016 23:36:56 +0200
+
 ssh-agent-filter (0.4.1-1) unstable; urgency=medium
 
   * New upstream release:
