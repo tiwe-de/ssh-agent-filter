@@ -192,7 +192,7 @@ int make_listen_sock () {
 }
 
 void parse_cmdline (int const argc, char const * const * const argv) {
-	po::options_description opts{"OPTIONS"};
+	po::options_description opts{"Options"};
 	opts.add_options()
 		("all-confirmed,A",		po::bool_switch(&all_confirmed),"allow all other keys with confirmation")
 		("comment,c",			po::value(&allowed_comment),	"key specified by comment")
@@ -211,13 +211,19 @@ void parse_cmdline (int const argc, char const * const * const argv) {
 	notify(config);
 	
 	if (config.count("help")) {
-		cout << "Usage: ssh-agent-filter [ OPTIONS ]" << endl;
-		cout << opts << endl;
+		cout << "Usage: ssh-agent-filter [ OPTIONS ]\n";
+		cout << opts;
+		cout << "Environment:\n";
+		cout << "  SSH_AUTH_SOCK  socket of upstream ssh-agent\n";
+		cout << "  SSH_ASKPASS    command to run for confirmation questions\n";
 		exit(EX_OK);
 	}
 	
 	if (config.count("version")) {
-		cout << SSH_AGENT_FILTER_VERSION << endl;
+		cout << SSH_AGENT_FILTER_VERSION "\n";
+		cout << "Written by Timo Weingärtner.\n";
+		cout << "Report bugs to the Debian BTS at https://bugs.debian.org/\n";
+		cout << "or by mail to timo@tiwe.de.\n";
 		exit(EX_OK);
 	}
 

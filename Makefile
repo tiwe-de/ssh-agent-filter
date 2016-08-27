@@ -27,8 +27,8 @@ all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
 %.1: %.1.md
 	pandoc -s -w man $< -o $@
 
-ssh-agent-filter.1: ssh-agent-filter
-	help2man -n $< -o $@ -N ./$<
+%.1: %.help2man %
+	help2man -i $< -o $@ -N -L C.UTF-8 $(*D)/$(*F)
 
 ssh-agent-filter: ssh-agent-filter.o
 
