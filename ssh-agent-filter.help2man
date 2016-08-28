@@ -1,0 +1,12 @@
+[NAME]
+ssh\-agent\-filter \- filtering proxy for ssh\-agent meant to be forwarded to untrusted servers
+[DESCRIPTION]
+ssh\-agent\-filter provides the unix domain socket interface of an ssh\-agent.
+By default it forks and outputs shell code setting SSH_AUTH_SOCK and SSH_AGENT_PID, just like ssh\-agent does.
+
+It filters each request according to its command line options.
+No crypto operations are done by ssh\-agent\-filter; they are delegated to the upstream ssh\-agent.
+
+ssh\-agent\-filter is not meant to be used directly, but through afssh.
+[SEE ALSO]
+afssh(1), ssh(1), ssh\-agent(1)

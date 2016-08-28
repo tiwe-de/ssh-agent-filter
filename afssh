@@ -28,7 +28,7 @@ usage () {
 	echo
 	"$SAF" --help
 	echo
-	ssh --help
+	ssh
 	exit
 }
 

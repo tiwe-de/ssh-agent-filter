@@ -1,4 +1,4 @@
-# Copyright (C) 2013,2015 Timo Weingärtner <timo@tiwe.de>
+# Copyright (C) 2013-2016 Timo Weingärtner <timo@tiwe.de>
 #
 # This file is part of ssh-agent-filter.
 #
@@ -27,8 +27,8 @@ all: ssh-agent-filter.1 afssh.1 ssh-askpass-noinput.1
 %.1: %.1.md
 	pandoc -s -w man $< -o $@
 
-ssh-agent-filter.1: ssh-agent-filter
-	help2man -n $< -o $@ -N ./$<
+%.1: %.help2man %
+	help2man -i $< -o $@ -N -L C.UTF-8 $(*D)/$(*F)
 
 ssh-agent-filter: ssh-agent-filter.o
 

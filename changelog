@@ -1,4 +1,45 @@
-commit 6bf9113ea96a99a5eb1b8f832497dd9e24857468
+commit 7152b927e22ef602011f8acf865c3cafc113c502
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2016-08-27 22:47:48 +0200
+
+    update copyright
+
+commit bfa8ac40e032d4d204ab6a9202531198cee9706e
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2016-08-27 21:44:17 +0200
+
+    exploit more help2man features
+    
+    use an include file for explanatory text
+    add environment, author and bug report information to the program's output
+
+commit dc582af6e7a1e645402f333e200b8ff718de1b48
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2016-08-23 22:03:43 +0200
+
+    clear O_NONBLOCK on client sockets
+    
+    on *BSD client sockets inherit flags from the listening socket
+
+commit af7125b71663fafb61fb2e097a34695bab895b01
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2016-02-10 11:18:03 +0100
+
+    fix lintian spelling-error-in-manpage ssh-askpass-noinput.1.gz acutally actually
+
+commit edcfe36b273de11d04cd0e77e31bc5e8c0b1337b
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-10-05 19:13:17 +0200
+
+    s/Invocation:/Usage:/ to make help2man recognize SYNOPSIS
+
+commit a448de907b70e9d6b2532f1e820e5c70b11dcc70
+Author: Timo Weingärtner <timo@tiwe.de>
+Date:   2015-09-08 14:36:07 +0200
+
+    afssh: call ssh without arguments for usage
+
+commit c9dfa57b7a06c5b0770e11d210e02ace54518644 (tag: 0.4.1)
 Author: Timo Weingärtner <timo@tiwe.de>
 Date:   2015-09-06 16:41:22 +0200
 
