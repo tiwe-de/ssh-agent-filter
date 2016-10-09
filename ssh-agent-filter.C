@@ -543,8 +543,9 @@ int main (int const argc, char const * const * const argv) {
 			exit(EX_OK);
 		}
 	
+		// the following stuff is optional, so we don't do error checking
 		setsid();
-		chdir("/");
+		static_cast<void>(chdir("/"));
 		int devnull = open("/dev/null", O_RDWR);
 		dup2(devnull, 0);
 		dup2(devnull, 1);
