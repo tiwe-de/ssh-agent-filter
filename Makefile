@@ -17,6 +17,7 @@
 
 
 CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
+PREFIX ?= /usr/local
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
@@ -42,5 +43,11 @@ version.h:
 clean:
 	$(RM) *.1 ssh-agent-filter *.o
 	test ! -d .git || git checkout -f -- version.h
+
+install: ssh-agent-filter.1
+	install -m 755 ssh-agent-filter $(PREFIX)/bin/ssh-agent-filter
+	install -m 755 afssh $(PREFIX)/bin/afssh
+	install -m 644 ssh-agent-filter.1 $(PREFIX)/man/man1/ssh-agent-filter.1
+
 
 .PHONY: version.h
