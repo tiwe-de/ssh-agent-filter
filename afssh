@@ -51,6 +51,12 @@ fi
 
 declare -a agent_filter_args
 
+if ! type -P realpath >/dev/null 2>&1  ; then
+    function realpath () {
+       perl -mCwd -e 'print Cwd::abs_path($_), "\n" foreach @ARGV;' $@
+    }
+fi
+
 if [ -x "${BASH_SOURCE%/*}/ssh-agent-filter" ]; then
 	SAF=$(realpath "${BASH_SOURCE%/*}/ssh-agent-filter")
 else
