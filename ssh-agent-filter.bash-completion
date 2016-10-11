@@ -23,9 +23,13 @@ _ssh-agent-filter () {
 
 	_quote_readline_by_ref "$cur" cur
 	
-	opts="--all-confirmed --comment --comment-confirmed --debug --fingerprint --fingerprint-confirmed --help --key --key-confirmed --name --version"
+	opts="--all-confirmed --bind --comment --comment-confirmed --debug --fingerprint --fingerprint-confirmed --help --key --key-confirmed --name --version"
 	
 	case "$prev" in
+		-b|--bind)
+			COMPREPLY=()
+			return 0
+			;;
 		-c|--comment|-C|--comment-confirmed)
 			# hm, key comments might contain anything, how can I quote them ?
 			local comments="$(ssh-add -L | cut -d\  -f3- )"
@@ -52,7 +56,7 @@ _ssh-agent-filter () {
 	
 	COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
 	return 0
-} && complete -F _ssh-agent-filter ssh-agent-filter
+} && complete -o default -F _ssh-agent-filter ssh-agent-filter
 
 _ssh-agent-filter_have_dash-dash () {
 	local i

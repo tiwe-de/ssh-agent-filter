@@ -194,6 +194,7 @@ int make_listen_sock () {
 void parse_cmdline (int const argc, char const * const * const argv) {
 	po::options_description opts{"Options"};
 	opts.add_options()
+		("bind,b",			po::value(&path),		"bind address specified by filesystem path")
 		("all-confirmed,A",		po::bool_switch(&all_confirmed),"allow all other keys with confirmation")
 		("comment,c",			po::value(&allowed_comment),	"key specified by comment")
 		("comment-confirmed,C",		po::value(&confirmed_comment),	"key specified by comment, with confirmation")
@@ -525,11 +526,11 @@ void sighandler (int sig) {
 }
 
 int main (int const argc, char const * const * const argv) {
+	path = fs::current_path() / ("agent." + std::to_string(getpid()));
 	parse_cmdline(argc, argv);
 	
 	setup_filters();
 
-	path = fs::current_path() / ("agent." + std::to_string(getpid()));
 	int listen_sock = make_listen_sock();
 
 	if (not debug) {
