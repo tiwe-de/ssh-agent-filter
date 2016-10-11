@@ -17,6 +17,9 @@
 
 
 CXXFLAGS ?= -g -O2 -Wall -Wold-style-cast
+PREFIX ?= /usr/local
+bindir = $(PREFIX)/bin
+mandir = $(PREFIX)/man
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 CXXFLAGS += -std=c++11
@@ -42,5 +45,15 @@ version.h:
 clean:
 	$(RM) *.1 ssh-agent-filter *.o
 	test ! -d .git || git checkout -f -- version.h
+
+install: all
+	mkdir -p $(DESTDIR)$(bindir) $(DESTDIR)$(mandir)/man1
+	install -m 755 ssh-agent-filter $(DESTDIR)$(bindir)/ssh-agent-filter
+	install -m 755 afssh $(DESTDIR)$(bindir)/afssh
+	install -m 755 ssh-askpass-noinput $(DESTDIR)$(bindir)/ssh-askpass-noinput
+	install -m 644 ssh-agent-filter.1 $(DESTDIR)$(mandir)/man1/ssh-agent-filter.1
+	install -m 644 afssh.1 $(DESTDIR)$(mandir)/man1/afssh.1
+	install -m 644 ssh-askpass-noinput.1 $(DESTDIR)$(mandir)/man1/ssh-askpass-noinput.1
+
 
 .PHONY: version.h
