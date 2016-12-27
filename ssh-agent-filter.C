@@ -305,7 +305,7 @@ void setup_filters () {
 	}
 }
 
-bool confirm (string const & question) {
+bool confirm (string const & question, std::map <string, string> & values) {
 	char const * sap;
 	if (!(sap = getenv("SSH_ASKPASS")))
 		sap = "ssh-askpass";
@@ -318,6 +318,10 @@ bool confirm (string const & question) {
 		throw runtime_error("fork()");
 	if (pid == 0) {
 		// child
+		// Set environment variables for the askpass script
+		for (auto iter: values) {
+			setenv(iter.first.c_str(), iter.second.c_str(), 1);
+		}
 		char const * args[3] = { sap, question.c_str(), nullptr };
 		// see execvp(3p) for cast rationale
 		execvp(sap, const_cast<char * const *>(args));
@@ -329,7 +333,7 @@ bool confirm (string const & question) {
 	}
 }
 
-bool dissect_auth_data_ssh (rfc4251::string const & data, string & request_description) try {
+bool dissect_auth_data_ssh (rfc4251::string const & data, string & request_description, std::map<string, string> & values) try {
 	io::stream<io::array_source> datastream{data.data(), data.size()};
 	arm(datastream);
 
@@ -342,6 +346,10 @@ bool dissect_auth_data_ssh (rfc4251::string const & data, string & request_descr
 	rfc4251::boolean	shouldbetrue{datastream};
 	rfc4251::string		publickeyalgorithm{datastream};
 	rfc4251::string		publickey{datastream};
+
+	// Store the values, to be exported in environment
+	values["AGENT_FILTER_SERVICENAME"] = servicename;
+	values["AGENT_FILTER_USERNAME"] = username;
 
 	request_description = "The request is for an ssh connection as user '" + string{username} + "' with service name '" + string{servicename} + "'.";
 
@@ -446,9 +454,11 @@ rfc4251::string handle_request (rfc4251::string const & r) {
 					auto it = confirmed_pubkeys.find(key);
 					if (it != confirmed_pubkeys.end()) {
 						string request_description;
+						// environment variables available for the ssh-askpass process
+						std::map<string, string> values;
 						bool dissect_ok{false};
 						if (!dissect_ok)
-							dissect_ok = dissect_auth_data_ssh(data, request_description);
+							dissect_ok = dissect_auth_data_ssh(data, request_description, values);
 						if (!dissect_ok)
 							request_description = "The request format is unknown.";
 						
@@ -456,8 +466,9 @@ rfc4251::string handle_request (rfc4251::string const & r) {
 						if (saf_name.length())
 							question += " named '" + saf_name + "'";
 						question += " requested use of the key named '" + it->second + "'.\n";
+						values["AGENT_FILTER_KEYNAME"] = it->second;
 						question += request_description;
-						allow = confirm(question);
+						allow = confirm(question, values);
 					}
 				}
 				
